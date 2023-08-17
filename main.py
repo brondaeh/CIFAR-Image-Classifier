@@ -20,11 +20,17 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # Data Transformation
 print("--> Preparing Data...")
 
-transform_train = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))]
-)
+transform_train = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   # these normalization values are commonly used for CIFAR10 dataset
+])
 
-transform_test = transform_train
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
 
 # Loading CIFAR-10 Dataset
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
@@ -48,7 +54,7 @@ def imshow(img):                                    # takes input parameter pyto
 # Model Initialization
 print("--> Initializing Model...")
 
-net = VGG('VGG11')
+net = VGG('VGG16')
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
     net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
@@ -61,8 +67,10 @@ optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)     # used to up
 # Training the model
 print("--> Training Model...")
 
-num_epochs = 2                  # set number of epochs (number of times dataset is seen by model)
+num_epochs = 3                  # set number of epochs (number of times dataset is seen by model)
 tick = time.time()              # record start time to track total training time
+# train_losses = []               # tracks training loss for each epoch
+# validation_acc = []
 
 for epoch in range(num_epochs): # training loop processes entire training dataset num_epochs times with the model
     running_loss = 0.0          # tracks running loss to be printed
@@ -81,10 +89,19 @@ for epoch in range(num_epochs): # training loop processes entire training datase
         if i % 2000 == 1999:                    # print avg loss over the last 2000 mini-batches for every 2000
             print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
             running_loss = 0.0                  # reset running loss
+    # train_losses.append(running_loss / len(trainloader))
 
 tock = time.time()
 trainingTime = tock - tick
 print(f"Training completed in {trainingTime:.2f} seconds.")
+
+# Learning Curve
+# plt.plot(range(0, num_epochs + 1), train_losses, label='Training Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.title('Learning Curve')
+# plt.legend()
+# plt.show()
 
 # Test the Model on the Entire Test Dataset
 print("--> Testing Model...")
