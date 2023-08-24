@@ -36,73 +36,82 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 
-# Data Loaders
-batch_size = 4
+batch_size = 256
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
 
 # Definition of Classes
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-# Method for Visualizing Training Images
-def imshow(img):                                    # takes input parameter pytorch tensor of 1 image
-    img = img / 2 + 0.5                             # unnormalize
-    npimg = img.numpy()                             # convert to numpy array
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
-    plt.show()
-
 # Model Initialization
 print("--> Initializing Model...")
 
-net = VGG('VGG16')
+net = VGG('VGG16')                      # model called net is an instance of class VGG
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
     net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
     cudnn.benchmark = True              # enables cuDNN benchmarking mode for best algorithm during convolutional operations
 
-# Loss Function and Optimizer
-criterion = nn.CrossEntropyLoss()                                   # applies softmax   
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)     # used to update parameters (weights and biases) to minimize loss function
+criterion = nn.CrossEntropyLoss()                                                           # applies softmax   
+optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.00001)         # used to update parameters (weights and biases) to minimize loss function
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=20, gamma=0.1)   # improves convergence with decreasing lr
 
-# Training the model
+# Visualizing Training Images
+def imshow(img):                                    # takes input parameter pytorch tensor of 1 image
+    img = img / 2 + 0.5                             # unnormalize
+    npimg = img.numpy()                             # convert to numpy array
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
+    plt.show()
+    
+# Training
 print("--> Training Model...")
 
-num_epochs = 3                  # set number of epochs (number of times dataset is seen by model)
+num_epochs = 40                 # set number of epochs (number of times dataset is seen by model)
 tick = time.time()              # record start time to track total training time
 
 for epoch in range(num_epochs): # training loop processes entire training dataset num_epochs times with the model
-    running_loss = 0.0          # tracks running loss to be printed
+    train_loss = 0.0            # tracks running loss to be printed
+    net.train()                 # model set to training mode
 
     for i, data in enumerate(trainloader, 0):   # iterate thru mini-batches, i = current mini-batch, data = trainloader data
         inputs, labels = data                   # unpack mini-batch data to input image and corresponding ground-truth labels [inputs, labels]
         inputs, labels = inputs.to(device), labels.to(device)
 
         optimizer.zero_grad()                   # zero all parameter gradients
+
         outputs = net(inputs)                   # forward pass to get predictions from model
         loss = criterion(outputs, labels)       # loss calculation compares predicted outputs and ground-truth labels
+
         loss.backward()                         # backward pass to compute gradients
         optimizer.step()                        # update model's weights and biases with gradients
         
-        running_loss += loss.item()             # update current mini-batch loss to running loss
-        if i % 2000 == 1999:                    # print avg loss over the last 2000 mini-batches for every 2000
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
-            running_loss = 0.0                  # reset running loss
+        train_loss += loss.item()               # update current mini-batch loss to running loss
+        if i % 195 == 194:                      # print avg loss for current mini-batch, # training examples/batch size = 50000/256 = 195
+            print(f'[Epoch {epoch + 1:>5}] avg loss: {train_loss / 195:.3f}')
+            train_loss = 0.0                    # reset running loss
+    scheduler.step()
 
 tock = time.time()
 trainingTime = tock - tick
 print(f"Training completed in {trainingTime:.2f} seconds.")
 
-# Test the Model on the Entire Test Dataset
+# Testing on the Entire Test Dataset
 print("--> Testing Model...")
 
 correct = 0     # tracks correct predictions
 total = 0       # tracks total images covered
+test_loss = 0.0 # tracks running loss during testing
+net.eval()      # model set to testing mode
 
 with torch.no_grad():               # disable gradient calculations since we're not training
     for data in testloader:         # iterate over mini-batches in test dataset
         inputs, labels = data       # assign input image and ground truth label for each mini-batch
         inputs, labels = inputs.to(device), labels.to(device)
+
         outputs = net(inputs)       # forward pass: test images sent through network for predictions
+        loss = criterion(outputs, labels)
+
+        test_loss += loss.item()    # calculate test loss
         _, predicted = torch.max(outputs.data, 1)       # predicted class indices are obtained
 
         # updates total image count for each mini-batch
@@ -114,6 +123,8 @@ with torch.no_grad():               # disable gradient calculations since we're 
         # .item() extracts numerical value of the summation (integer)
         correct += (predicted == labels).sum().item()
 
+avg_test_loss = test_loss / len(testloader)
+print(f'Average test loss: {avg_test_loss:.3f}')
 print(f'Accuracy of the network on 10000 test images: {100 * correct // total}%')
 
 # Check Accuracy for Each Class
