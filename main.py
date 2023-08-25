@@ -62,7 +62,71 @@ def imshow(img):                                    # takes input parameter pyto
     npimg = img.numpy()                             # convert to numpy array
     plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
     plt.show()
-    
+
+# Training Method
+def train(epoch):
+    train_loss = 0.0
+    net.train()
+    for batch_index, data in enumerate(trainloader, 0):     # iterate thru mini-batches, batch_index = current mini-batch, data = trainloader data
+        inputs, labels = data                               # unpack mini-batch data to input image and corresponding ground-truth labels [inputs, labels]
+        inputs, labels = inputs.to(device), labels.to(device)
+
+        optimizer.zero_grad()                   # zero all parameter gradients
+
+        outputs = net(inputs)                   # forward pass to get predictions from model
+        loss = criterion(outputs, labels)       # loss calculation compares predicted outputs and ground-truth labels
+
+        loss.backward()                         # backward pass to compute gradients
+        optimizer.step()                        # update model's weights and biases with gradients
+        
+        train_loss += loss.item()               # update current mini-batch loss to running loss
+        if batch_index % 195 == 194:            # print avg loss for current mini-batch, # training examples/batch size = 50000/256 = 195
+            print(f'[Epoch {epoch + 1:>5}] avg loss: {train_loss / 195:.3f}')
+            train_loss = 0.0                    # reset running loss
+
+# Testing Method
+def test(epoch):
+    test_loss = 0.0
+    net.eval()
+    correct = 0
+    total = 0
+
+    with torch.no_grad():               # disable gradient calculations since we're not training
+        for data in testloader:         # iterate over mini-batches in test dataset
+            inputs, labels = data       # assign input image and ground truth label for each mini-batch
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            outputs = net(inputs)       # forward pass: test images sent through network for predictions
+            loss = criterion(outputs, labels)
+
+            test_loss += loss.item()    # calculate test loss
+            _, predicted = torch.max(outputs.data, 1)       # predicted class indices are obtained
+
+            # updates total image count for each mini-batch
+            # labels is the ground truth class labels 
+            total += labels.size(0)
+        
+            # compares predicted class indices with ground truth class indicies element-wise (T/F 1/0), returns a Boolean tensor
+            # .sum() calculates the number of correct predictions since 1 is true and 0 is false
+            # .item() extracts numerical value of the summation (integer)
+            correct += (predicted == labels).sum().item()
+
+    avg_test_loss = test_loss / len(testloader)
+    print(f'Average test loss: {avg_test_loss:.3f}')
+    print(f'Accuracy of the network on 10000 test images: {100 * correct // total}%')
+
+# Train and Test Loop
+num_epochs = 40
+for epoch in range(num_epochs):
+    train(epoch)
+    test(epoch)
+    scheduler.step()
+
+#############################################################################
+
+
+
+
 # Training
 print("--> Training Model...")
 
