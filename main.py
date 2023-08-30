@@ -48,7 +48,8 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 # Model Initialization
 print("--> Initializing Model...")
 
-net = VGG('VGG16')                      # model called net is an instance of class VGG
+net = MobileNet()
+# net = VGG('VGG16')
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
     net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
