@@ -14,11 +14,14 @@ import time
 import matplotlib.pyplot as plt
 
 from models import *
+from ptflops import get_model_complexity_info
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# Data Transformation
+# Data Preprocessing
+# ------------------------------------------------------
+# Definitions of data augmentations and dataset loaders
 print("--> Preparing Data...")
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'     # device initialization on gpu or cpu
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -34,7 +37,6 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-# Loading CIFAR-10 Dataset
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 
@@ -42,14 +44,16 @@ batch_size = 256
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
 
-# Definition of Classes
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')  # dataset classes
 
 # Model Initialization
+# ------------------------------------------------------
+# Creating model instance and defining criterion, optimizer, and scheduler
 print("--> Initializing Model...")
 
-net = MobileNet()
-# net = VGG('VGG16')
+# net = MobileNet()
+net = VGG('VGG16')
+
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
     net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
@@ -59,17 +63,35 @@ criterion = nn.CrossEntropyLoss()                                               
 optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                       # used to update parameters (weights and biases) to minimize loss function
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)    # improves convergence with decreasing lr
 
-# Training Image Visualization Method
+# Model Complexity Info
+# ------------------------------------------------------
+# Calculates the computational complexity and number of parameters in the model
+print ("--> Calculating Model Complexity...")
+
+with torch.cuda.device(0):
+    maccs, params = get_model_complexity_info(net, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
+
+    print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
+    print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
+
+# Methods
+# ------------------------------------------------------
 def imshow(img):                                    # takes input parameter pytorch tensor of 1 image
+    '''
+    Visualization of training images
+    '''
     img = img / 2 + 0.5                             # unnormalize
     npimg = img.numpy()                             # convert to numpy array
     plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
     plt.show()
 
-# Training Method
-total_train_loss = []                                           # list to track total training loss for learning curve
+total_train_loss = []   # list to track total training loss for learning curve
 
 def train(epoch):
+    '''
+    Trains the model with forward and backprop
+    Returns avg_train_loss for the current epoch
+    '''
     train_loss = 0.0                                            # tracks the running training loss for each epoch
     net.train()                                                 # enable training mode on the model
 
@@ -92,10 +114,13 @@ def train(epoch):
             train_loss = 0.0                                    # reset running training loss
             return avg_train_loss                               # return avg training loss to be displayed
 
-# Testing Method
-total_test_loss = []                                            # list to track total test loss for learning curve
+total_test_loss = []    # list to track total test loss for learning curve
 
 def test(epoch):
+    '''
+    Tests the model
+    Returns (avg_test_loss, test_accuracy) for the current epoch
+    '''
     test_loss = 0.0                                             # tracks the test loss for the current epoch
     net.eval()                                                  # enable testing mode on the model
     correct = 0
@@ -127,8 +152,11 @@ def test(epoch):
     total_test_loss.append(avg_test_loss)                       # update the total test loss list with the avg test loss for the current epoch
     return avg_test_loss, test_accuracy                         # return tuple of avg test loss and test accuracy to be displayed
 
-# Class Accuracy Method
 def classAccuracy():
+    '''
+    Calculates the model's accuracy on classifying the test dataset
+    Outputs the % accuracy for each of the 10 classes
+    '''
     correct_pred = {classname: 0 for classname in classes}
     total_pred = {classname: 0 for classname in classes}
 
@@ -148,7 +176,8 @@ def classAccuracy():
         accuracy = 100 * float(correct_count) / total_pred[classname]
         print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
-# Train and Test Loop
+# Training and Testing Loop
+# ------------------------------------------------------
 print("--> Training and testing in progress...")
 
 num_epochs = 60
@@ -169,6 +198,7 @@ print(f'Training and testing completed in {total_time:.2f} seconds.')
 classAccuracy()
 
 # Learning Curve
+# ------------------------------------------------------
 plt.plot(range(num_epochs), total_train_loss, label='Training Loss')
 plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
 plt.xlabel('Epochs')
