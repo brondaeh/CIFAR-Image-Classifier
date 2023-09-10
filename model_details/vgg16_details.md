@@ -1,5 +1,5 @@
-## VGG16 Model Details
-# Training parameters to achieve 92.42% accuracy on CIFAR-10 dataset
+# VGG16 Model Details
+## Training parameters to achieve 92.42% accuracy on CIFAR-10 dataset
 
 - **Batch Size:** 256
 - **Number of Epochs:** 60
