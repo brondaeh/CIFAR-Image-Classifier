@@ -6,8 +6,8 @@ import torch.nn.functional as F
 
 class Block(nn.Module):
     '''
-    Block is a building block class of MobileNet
-    Depthwise conv + Pointwise conv
+    Block is a building block class of MobileNetV1
+    2 conv layers: depthwise conv + pointwise conv
     '''
     def __init__(self, in_planes, out_planes, stride=1):
         super(Block, self).__init__()
@@ -32,7 +32,7 @@ class MobileNet(nn.Module):
 
     def __init__(self, num_classes=10):
         super(MobileNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)   # first standard conv layer, 3 channels, 32 outputs
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)   # first standard conv layer, 3 channels, 32 outputs, stride 2 -> 1 for CIFAR10
         self.bn1 = nn.BatchNorm2d(32)                                                   # batchnorm applied to each output
         self.layers = self._make_layers(in_planes=32)                                   # call _make_layers() to construct sequence of blocks (depthwise seperable conv)
         self.linear = nn.Linear(1024, num_classes)                                      # FC layer connects 1024 inputs to 10 outputs (10 classes)
@@ -44,7 +44,7 @@ class MobileNet(nn.Module):
             stride = 1 if isinstance(x, int) else x[1]              # if integer, stride = 1; if tuple, stride = second value x[1]
             layers.append(Block(in_planes, out_planes, stride))     # creates a new Block instance with specified inputs, outputs, and stride; append to layers list
             in_planes = out_planes                                  # match input planes of the next block to current output planes
-        return nn.Sequential(*layers)                               # returns an nn.Sequential container with all blocks stored in layers
+        return nn.Sequential(*layers)                               # returns a nn.Sequential container with all blocks stored in layers
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))   # first full conv layer -> batchnorm -> ReLU
