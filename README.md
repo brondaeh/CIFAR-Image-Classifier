@@ -6,4 +6,4 @@ training neural network models for image classification on cifar-10 dataset
 |   Model   | Accuracy |
 |-----------|----------|
 |[VGG16](model_details/vgg16_details.md)      |  92.42%  |
-|MobileNetV1|          |
+|[MobileNetV1](model_details/mobilenetv1_details.md)|          |
