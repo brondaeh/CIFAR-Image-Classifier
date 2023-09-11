@@ -51,8 +51,8 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 # Creating model instance and defining criterion, optimizer, and scheduler
 print("--> Initializing Model...")
 
-# net = MobileNet()
-net = VGG('VGG16')
+net = MobileNet()
+# net = VGG('VGG16')
 
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
@@ -60,8 +60,9 @@ if device == 'cuda':
     cudnn.benchmark = True              # enables cuDNN benchmarking mode for best algorithm during convolutional operations
 
 criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
-optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                       # used to update parameters (weights and biases) to minimize loss function
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)    # improves convergence with decreasing lr
+optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)                       # used to update parameters (weights and biases) to minimize loss function
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=20, gamma=0.1)               # improves convergence with decreasing lr
+# schedular = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)
 
 # Model Complexity Info
 # ------------------------------------------------------
@@ -87,7 +88,7 @@ def imshow(img):                                    # takes input parameter pyto
 
 total_train_loss = []   # list to track total training loss for learning curve
 
-def train(epoch):
+def train():
     '''
     Trains the model with forward and backprop
     Returns avg_train_loss for the current epoch
@@ -116,7 +117,7 @@ def train(epoch):
 
 total_test_loss = []    # list to track total test loss for learning curve
 
-def test(epoch):
+def test():
     '''
     Tests the model
     Returns (avg_test_loss, test_accuracy) for the current epoch
@@ -184,12 +185,12 @@ num_epochs = 60
 start_time = time.time()
 
 for epoch in range(num_epochs):
-    avg_train_loss = train(epoch)
-    test_data = test(epoch)
+    avg_train_loss = train()
+    test_data = test()
     avg_test_loss, test_accuracy = test_data
     scheduler.step()
 
-    print(f'[Epoch {epoch + 1:>3}]\t Avg Training Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Accuracy: {test_accuracy:.1f}%')
+    print(f'[Epoch {epoch + 1:>3}]\t Avg Training Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Accuracy: {test_accuracy:.2f}%')
 
 end_time = time.time()
 total_time = end_time - start_time

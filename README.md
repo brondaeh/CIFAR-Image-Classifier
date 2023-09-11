@@ -1,7 +1,7 @@
-## pytorch-cifar10
-training neural network models for image classification on cifar-10 dataset
+# pytorch-cifar10
+Training neural network models for image classification on CIFAR-10 dataset.
 
-# Accuracy
+## Accuracy
 
 |   Model   | Accuracy |
 |-----------|----------|
