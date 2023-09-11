@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 class Block(nn.Module):
     '''
-    Block is a building block class of MobileNetV2
+    Block (Inverted Residual Block) is a building block class of MobileNetV2
     3 conv layers: expand + depthwise + pointwise
     '''
     def __init__(self, in_planes, out_planes, expansion, stride):   # a Block instance takes 4 parameters from the _make_layers() method
@@ -56,10 +56,10 @@ class MobileNetV2(nn.Module):
     def __init__(self, num_classes=10):
         super(MobileNetV2, self).__init__()
         # NOTE: change conv1 stride 2 -> 1 for CIFAR10
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)       # first full conv layer 3 channels, 32 inputs, 3x3 filter
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)       # first full conv layer 3 in channels, 32 out channels, 3x3 filter
         self.bn1 = nn.BatchNorm2d(32)                                                       # batchnorm for first conv layer
         self.layers = self._make_layers(in_planes=32)                                       # calls _make_layers() to construct Blocks with first input size = 32
-        self.conv2 = nn.Conv2d(320, 1280, kernel_size=1, stride=1, padding=0, bias=False)   # pointwise conv layer 320 channels, 1280 inputs, 1x1 filter
+        self.conv2 = nn.Conv2d(320, 1280, kernel_size=1, stride=1, padding=0, bias=False)   # pointwise conv layer 320 in channels, 1280 out channels, 1x1 filter
         self.bn2 = nn.BatchNorm2d(1280)                                                     # batchnorm for pointwise conv layer
         self.linear = nn.Linear(1280, num_classes)                                          # FC layer connecting 1280 inputs to 10 outputs (10 class scores)
 

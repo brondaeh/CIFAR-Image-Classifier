@@ -32,7 +32,7 @@ class MobileNet(nn.Module):
 
     def __init__(self, num_classes=10):
         super(MobileNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)   # first standard conv layer, 3 channels, 32 outputs, stride 2 -> 1 for CIFAR10
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)   # first standard conv layer, 3 in channels, 32 out channels, stride 2 -> 1 for CIFAR10
         self.bn1 = nn.BatchNorm2d(32)                                                   # batchnorm applied to each output
         self.layers = self._make_layers(in_planes=32)                                   # call _make_layers() to construct sequence of blocks (depthwise seperable conv)
         self.linear = nn.Linear(1024, num_classes)                                      # FC layer connects 1024 inputs to 10 outputs (10 classes)
