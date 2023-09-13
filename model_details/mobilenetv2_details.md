@@ -1,5 +1,5 @@
 # MobileNetV2 Model Details
-## Training parameters to achieve TBD accuracy on CIFAR-10 dataset
+## Training parameters to achieve 93.39% accuracy on CIFAR-10 dataset
 
 - **Batch Size:** 256
 - **Number of Epochs:** 60

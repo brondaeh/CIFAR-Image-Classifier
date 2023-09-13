@@ -11,9 +11,9 @@ class Block(nn.Module):
     '''
     def __init__(self, in_planes, out_planes, expansion, stride):   # a Block instance takes 4 parameters from the _make_layers() method
         super(Block, self).__init__()
-        self.stride = stride                                        # stride is the scaling factor that changes the size of input channels for first conv layer
+        self.stride = stride                                        
 
-        planes = expansion * in_planes
+        planes = expansion * in_planes                              # changes the number of intermediate channels in the block with expansion factor
 
         # expand: pointwise conv layer to expand number of channels of the input feature map, in_planes < out_planes
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, stride=1, padding=0, bias=False)
