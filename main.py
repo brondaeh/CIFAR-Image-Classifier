@@ -27,7 +27,7 @@ transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=15),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+    # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   # these normalization values are commonly used for CIFAR10 dataset
 ])
@@ -40,7 +40,7 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 
-batch_size = 256
+batch_size = 128
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
 
@@ -51,9 +51,11 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 # Creating model instance and defining criterion, optimizer, and scheduler
 print("--> Initializing Model...")
 
-# net = MobileNet()
-net = MobileNetV2()
 # net = VGG('VGG16')
+# net = MobileNet()
+# net = MobileNetV2()
+# net = ResNet18()
+net = ResNet34()
 
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
@@ -63,7 +65,7 @@ if device == 'cuda':
 criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
 optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0005)                      # used to update parameters (weights and biases) to minimize loss function
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=20, gamma=0.1)               # improves convergence with decreasing lr
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=40, eta_min=0.001)
 
 # Model Complexity Info
 # ------------------------------------------------------
@@ -110,8 +112,8 @@ def train():
         
         train_loss += loss.item()                               # update current mini-batch loss to running loss
         
-        if batch_index % 195 == 194:                            # print avg loss for current mini-batch, # of training examples/batch size = 50000/256 = 195
-            avg_train_loss = train_loss / 195                   # avg loss calculation, divide by total # of mini-batches
+        if batch_index % 390 == 389:                            # print avg loss for current mini-batch, # of training examples/batch size = 50000/128 = 390
+            avg_train_loss = train_loss / 390                   # avg loss calculation, divide by total # of mini-batches
             total_train_loss.append(avg_train_loss)             # update the total training loss list with the next avg training loss for the current mini-batch
             train_loss = 0.0                                    # reset running training loss
             return avg_train_loss                               # return avg training loss to be displayed
@@ -182,7 +184,7 @@ def classAccuracy():
 # ------------------------------------------------------
 print("--> Training and testing in progress...")
 
-num_epochs = 60
+num_epochs = 40
 start_time = time.time()
 
 for epoch in range(num_epochs):
