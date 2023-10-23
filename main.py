@@ -9,12 +9,14 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
+import os
 import numpy as np
 import time
 import matplotlib.pyplot as plt
 
 from models import *
 from ptflops import get_model_complexity_info
+
 
 # Data Preprocessing
 # ------------------------------------------------------
@@ -46,15 +48,16 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')  # dataset classes
 
+
 # Model Initialization
 # ------------------------------------------------------
 # Creating model instance and defining criterion, optimizer, and scheduler
 print("--> Initializing Model...")
 
-# net = VGG('VGG16')
+net = VGG('VGG16')
 # net = MobileNet()
 # net = MobileNetV2()
-net = ResNet18()
+# net = ResNet18()
 
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
 if device == 'cuda':
@@ -62,9 +65,9 @@ if device == 'cuda':
     cudnn.benchmark = True              # enables cuDNN benchmarking mode for best algorithm during convolutional operations
 
 criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
-optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0005)                      # used to update parameters (weights and biases) to minimize loss function
-# scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=20, gamma=0.1)               # improves convergence with decreasing lr
+optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                       # used to update parameters (weights and biases) to minimize loss function
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)
+
 
 # Model Complexity Info
 # ------------------------------------------------------
@@ -76,6 +79,7 @@ with torch.cuda.device(0):
 
     print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
     print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
+
 
 # Methods
 # ------------------------------------------------------
@@ -89,7 +93,6 @@ def imshow(img):                                    # takes input parameter pyto
     plt.show()
 
 total_train_loss = []   # list to track total training loss for learning curve
-
 def train():
     '''
     Trains the model with forward and backprop
@@ -118,7 +121,6 @@ def train():
             return avg_train_loss                               # return avg training loss to be displayed
 
 total_test_loss = []    # list to track total test loss for learning curve
-
 def test():
     '''
     Tests the model
@@ -179,6 +181,17 @@ def classAccuracy():
         accuracy = 100 * float(correct_count) / total_pred[classname]
         print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
+def learningCurve(num_epochs):
+    plt.plot(range(num_epochs), total_train_loss, label='Training Loss')
+    plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Learning Curve')
+    plt.grid()
+    plt.legend()
+    plt.show()
+
+
 # Training and Testing Loop
 # ------------------------------------------------------
 print("--> Training and testing in progress...")
@@ -198,15 +211,16 @@ end_time = time.time()
 total_time = end_time - start_time
 print(f'Training and testing completed in {total_time:.2f} seconds.')
 
-classAccuracy()
 
-# Learning Curve
+# Save Trained Model
 # ------------------------------------------------------
-plt.plot(range(num_epochs), total_train_loss, label='Training Loss')
-plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.title('Learning Curve')
-plt.grid()
-plt.legend()
-plt.show()
+model_folder = 'trained_models'
+if not os.path.exists(model_folder):
+    os.makedirs(model_folder)
+
+filename = 'vgg16_trained.pth'
+
+torch.save(net.state_dict(), os.path.join(model_folder, filename))
+
+# classAccuracy()
+# learningCurve(num_epochs)

@@ -28,7 +28,7 @@ class Block(nn.Module):
         self.bn3 = nn.BatchNorm2d(out_planes)
 
         self.shortcut = nn.Sequential()
-        # optional skip connection to bypass conv layers if stride is 1 (no downsampling) and in_planes != out_planes
+        # skip connection to bypass conv layers if stride is 1 (no downsampling) and in_planes != out_planes
         if stride == 1 and in_planes != out_planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, padding=0, bias=False),   # pw conv layer to ensure in_planes = out_planes since there is no downsampling
@@ -39,7 +39,7 @@ class Block(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))                   # pw conv layer -> batchnorm -> ReLU
         out = F.relu(self.bn2(self.conv2(out)))                 # dw conv layer -> batchnorm -> ReLU
         out = self.bn3(self.conv3(out))                         # pw conv layer -> batchnorm
-        out = out + self.shortcut(x) if self.stride==1 else out # add skip connection if stride is 1
+        out = out + self.shortcut(x) if self.stride==1 else out # add skip connection
         return out
 
 

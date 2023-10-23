@@ -23,7 +23,7 @@ class BasicBlock(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
-        # optional skip connection is stride != 1 (downsampling, feature map dimensions are reduced)
+        # skip connection if stride != 1 (downsampling, feature map dimensions are reduced)
         self.shortcut = nn.Sequential() 
         if stride != 1 or in_planes != self.expansion*planes:
             self.shortcut = nn.Sequential(
@@ -62,7 +62,7 @@ class Bottleneck(nn.Module):
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(self.expansion*planes)
 
-        # optional skip connection if stride != 1 (downsampling, feature map dimensions are reduced)
+        # skip connection if stride != 1 (downsampling, feature map dimensions are reduced)
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion*planes:
             self.shortcut = nn.Sequential(
