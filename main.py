@@ -83,9 +83,14 @@ with torch.cuda.device(0):
 
 # Methods
 # ------------------------------------------------------
-def imshow(img):                                    # takes input parameter pytorch tensor of 1 image
+def imshow(img):
     '''
     Visualization of training images
+
+    Args:
+    - img: single pytorch tensor image
+
+    Return: None
     '''
     img = img / 2 + 0.5                             # unnormalize
     npimg = img.numpy()                             # convert to numpy array
@@ -96,7 +101,11 @@ total_train_loss = []   # list to track total training loss for learning curve
 def train():
     '''
     Trains the model with forward and backprop
-    Returns avg_train_loss for the current epoch
+
+    Args: None
+
+    Return:
+    - avg_train_loss: average training loss for the current epoch
     '''
     train_loss = 0.0                                            # tracks the running training loss for each epoch
     net.train()                                                 # enable training mode on the model
@@ -123,8 +132,12 @@ def train():
 total_test_loss = []    # list to track total test loss for learning curve
 def test():
     '''
-    Tests the model
-    Returns (avg_test_loss, test_accuracy) for the current epoch
+    Tests the model on test dataset
+
+    Args: None
+
+    Return:
+    - (avg_test_loss, test_accuracy): tuple of average test loss and accuracy for the current epoch
     '''
     test_loss = 0.0                                             # tracks the test loss for the current epoch
     net.eval()                                                  # enable testing mode on the model
@@ -161,6 +174,10 @@ def classAccuracy():
     '''
     Calculates the model's accuracy on classifying the test dataset
     Outputs the % accuracy for each of the 10 classes
+
+    Args: None
+
+    Return: None
     '''
     correct_pred = {classname: 0 for classname in classes}
     total_pred = {classname: 0 for classname in classes}
@@ -182,6 +199,14 @@ def classAccuracy():
         print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
 def learningCurve(num_epochs):
+    '''
+    Plots a learning curve with training loss and test loss over total epochs
+
+    Args:
+    - num_epochs: number of epochs
+
+    Return: None
+    '''
     plt.plot(range(num_epochs), total_train_loss, label='Training Loss')
     plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
     plt.xlabel('Epochs')
