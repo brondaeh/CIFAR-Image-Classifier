@@ -2,8 +2,8 @@ import torch
 
 from copy import deepcopy
 from .pruning_engine_base import pruning_engine_base
-from .pruning_criterion.L1norm.L1norm import L1norm
-from .pruning_criterion.Taylor.Taylor import Taylor
+from .Pruning_Criterion.L1norm.L1norm import L1norm
+from .Pruning_Criterion.Taylor.Taylor import Taylor
 # from .pruning_criterion.KMean.K_L1norm import K_L1norm
 # from .pruning_criterion.KMean.K_Taylor import K_Taylor
 # from .pruning_criterion.KMean.K_Distance import K_Distance
