@@ -1,7 +1,7 @@
 '''Pruning VGG Model'''
 
 import torch 
-from Pruning_Engine import *
+from Pruner import *
 
 pruner = pruning_engine.PruningEngine(pruning_method='L1norm', individual=True)
 

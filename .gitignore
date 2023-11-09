@@ -1,0 +1,4 @@
+.DS_Store
+Data/
+Models/__pycache__/
+Pruner/.DS_Store
