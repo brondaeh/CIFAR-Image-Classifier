@@ -14,7 +14,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from models import *
+from Models import *
 from ptflops import get_model_complexity_info
 
 
@@ -39,8 +39,8 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+trainset = torchvision.datasets.CIFAR10(root='./Data', train=True, download=True, transform=transform_train)
+testset = torchvision.datasets.CIFAR10(root='./Data', train=False, download=True, transform=transform_test)
 
 batch_size = 256
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
@@ -239,7 +239,7 @@ print(f'Training and testing completed in {total_time:.2f} seconds.')
 
 # Save Trained Model
 # ------------------------------------------------------
-model_folder = 'trained_models'
+model_folder = 'Trained_Models'
 if not os.path.exists(model_folder):
     os.makedirs(model_folder)
 

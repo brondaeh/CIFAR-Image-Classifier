@@ -1,22 +1,12 @@
 '''Pruning VGG Model'''
 
-import numpy as np
-import os
+import torch 
+from Pruning_Engine import *
 
-import torch
-import torch.nn as nn
+pruner = pruning_engine.PruningEngine(pruning_method='L1norm', individual=True)
 
-from torch.autograd import Variable
-from torchvision import datasets, transforms
-
-from models import *
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# Load pre-trained model
-net = VGG('VGG16')
-net.to(device)
-
-model_folder = 'trained_models'
-filename = 'vgg16_trained.pth'
-net.load_state_dict(torch.load(os.path.join(model_folder, filename)))
+from torchvision.models import vgg16_bn,VGG16_BN_Weights
+weights = VGG16_BN_Weights.DEFAULT
+model = vgg16_bn(weights=weights)
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+model.to(device)
