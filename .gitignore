@@ -2,3 +2,7 @@
 Data/
 Models/__pycache__/
 Pruner/.DS_Store
+Trained_Models/
+Pruner/Pruning_Criterion/L1norm/__pycache__
+Pruner/Pruning_Criterion/Taylor/__pycache__
+Pruner/__pycache__
