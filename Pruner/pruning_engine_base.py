@@ -40,14 +40,15 @@ class pruning_engine_base:
             mask_tensor = torch.tensor(self.mask_number,device=self.device)     # create a mask tensor to mark parameters to be pruned, contains a single element mask_number
 
             for idx in remove_filter_idx:           # iterate over each element of remove_filter_idx list
-                # mark the weight, bias, mean, and variance tensors at the corresponding index to mask_tensor
+                # mark the weight, bias, mean, and variance tensors at the corresponding index to mask_tensor for pruning
+                # the filter at index idx will be marked for pruning
                 weight[idx.item()] = mask_tensor
                 bias[idx.item()] = mask_tensor
                 mean[idx.item()] = mask_tensor 
                 var[idx.item()] = mask_tensor
             
-            # filter the tensors by excluding elements marked by mask_tensor
-            weight = weight[weight != mask_tensor]      # weight tensor = weight tensor w/o the weights marked by mask_tensor; brackets hold a boolean mask
+            # removal of masked filters by excluding elements marked by mask_tensor
+            weight = weight[weight != mask_tensor]      # weight tensor = weight tensor w/o masked filters
             bias = bias[bias != mask_tensor]
             mean = mean[mean != mask_tensor]
             var = var[var != mask_tensor]
@@ -55,7 +56,7 @@ class pruning_engine_base:
             return weight,bias,mean,var
         elif bias is not None:      # if bias tensor exists -> linear or conv layer
             mask_tensor = torch.tensor(self.mask_number,device=self.device)         # create a mask tensor to mark parameters to be pruned, contains a single element mask_number
-            mask_tensor = mask_tensor.repeat(list(weight[0].size()))                # adjust mask_tensor dimensions to match size of weight tensor, repeat() is used to extend mask_number value across weight[0].size()
+            mask_tensor = mask_tensor.repeat(list(weight[0].size()))                # adjust mask_tensor dimensions to match size of weight tensor, repeat() is used to extend mask_number value across first filter size weight[0].size()
             bias_mask_tensor = torch.tensor(self.mask_number,device=self.device)    # create a bias mask tensor used for bias values
             
             for idx in remove_filter_idx:           # iterate over each element of remove_filter_idx list
@@ -72,23 +73,25 @@ class pruning_engine_base:
                 nonMaskRows_weight = abs(torch.abs(weight).sum(dim=1) - torch.abs(mask_tensor).sum(dim=0)) > self.mask_number
             
             # filter the tensors by excluding elements marked by mask_tensor
-            weight = weight[nonMaskRows_weight]     # weight tensor = weight tensor for nonMaskRows_weight = True
+            weight = weight[nonMaskRows_weight]     # weight tensor = weight tensor w/o masked filters for nonMaskRows_weight = True
             bias = bias[bias != self.mask_number]   # equivalent to bias = bias[bias != bias_mask_tensor]
             
             return weight,bias
         else:   # bias, mean, and var tensors don't exist
-            mask_tensor = torch.tensor(self.mask_number,device=self.device)
-            mask_tensor = mask_tensor.repeat(list(weight[0].size()))
+            mask_tensor = torch.tensor(self.mask_number,device=self.device)     # create a mask tensor
+            mask_tensor = mask_tensor.repeat(list(weight[0].size()))            # adjust size of mask tensor to match filter size (weight[0].size() gives first filter size)
 
-            for idx in remove_filter_idx:
-                weight[idx.item()] = mask_tensor
+            for idx in remove_filter_idx:           # iterate over remove_filter_idx list
+                weight[idx.item()] = mask_tensor    # set weight tensor at idx to mask_tensor
 
-            if linear is False:
+            if linear is False:     # if conv layer
+                # create boolean tensor
                 nonMaskRows_weight = abs(torch.abs(weight).sum(dim=(1,2,3)) - torch.abs(mask_tensor).sum(dim=(0,1,2))) > self.mask_number
             else:
                 nonMaskRows_weight = abs(torch.abs(weight).sum(dim=1) - torch.abs(mask_tensor).sum(dim=1)) > self.mask_number
 
-            weight = weight[nonMaskRows_weight]
+            weight = weight[nonMaskRows_weight]     # weight tensor = weight tensor w/o masked filters for nonMaskRows_weight = True
+
             return weight
 
     def base_remove_kernel_by_index(self,weight,remove_filter_idx,linear=False):
@@ -103,14 +106,21 @@ class pruning_engine_base:
         Return:
         - weight: The updated weight tensor after removing the kernels
         """
-        mask_tensor = torch.tensor(self.mask_number,device=self.device)
-        mask_tensor = mask_tensor.repeat(list(weight[0][0].size()))
+        mask_tensor = torch.tensor(self.mask_number,device=self.device)     # create a mask tensor
+        mask_tensor = mask_tensor.repeat(list(weight[0][0].size()))         # adjust size of mask tensor to match kernel size (weight[0][0].size() gives first kernel size)
         
-        for idx in remove_filter_idx:
-            weight[:,idx.item()] = mask_tensor
-        if (len(remove_filter_idx) != 0 and linear == False):
+        for idx in remove_filter_idx:           # iterate over remove_filter_idx list
+            weight[:,idx.item()] = mask_tensor  # set the entire column at idx of the weight tensor to mask_tensor, the kernel at idx across all filters are marked for pruning
+
+        if (len(remove_filter_idx) != 0 and linear == False):   # if remove_filter_idx list exists and it's a conv layer
+            # create a boolean tensor nonMaskRows_weight to calculate absolute difference between weight sum and mask_tensor sum
+            # True when non fully masked and False when masked
             nonMaskRows_weight = abs(torch.abs(weight).sum(dim=(2,3)) - torch.abs(mask_tensor).sum(dim=(0,1))) > 0.0001 
-            weight = weight[:,nonMaskRows_weight[0]]
-        if (linear != False):
-            weight = weight[:,weight[1]!=mask_tensor]
+            weight = weight[:,nonMaskRows_weight[0]]    # weight tensor = weight tensor w/o masked kernels (removal of masked kernels)
+
+        if (linear != False):   # if linear layer
+            # weight tensor is 2D, rows = output neurons, columns = input neurons
+            # remove marked columns of the weight tensor and keep those not marked for pruning
+            weight = weight[:,weight[1]!=mask_tensor]   # weight tensor = weight tensor w/o columns (input neurons) marked by mask_tensor
+
         return weight

@@ -18,12 +18,15 @@ from Models import *
 from ptflops import get_model_complexity_info
 
 
-# Data Preprocessing
-# ------------------------------------------------------
-# Definitions of data augmentations and dataset loaders
+'''
+Data Preprocessing
+------------------------------------------------------
+Definitions of data augmentations and dataset loaders
+'''
 print("--> Preparing Data...")
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'     # device initialization on gpu or cpu
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(f'Device: {device}')
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -33,7 +36,6 @@ transform_train = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   # these normalization values are commonly used for CIFAR10 dataset
 ])
-
 transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
@@ -46,22 +48,25 @@ batch_size = 256
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')  # dataset classes
+classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-
-# Model Initialization
-# ------------------------------------------------------
-# Creating model instance and defining criterion, optimizer, and scheduler
+'''
+Model Initialization
+------------------------------------------------------
+Creating model instance and defining criterion, optimizer, and scheduler
+'''
 print("--> Initializing Model...")
 
+# NOTE: change net for different models
 net = VGG('VGG16')
 # net = MobileNet()
 # net = MobileNetV2()
 # net = ResNet18()
 
 net = net.to(device)                    # moves model to device to ensure the next computations are performed on the specified device
-if device == 'cuda':
-    net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
+if device == torch.device('cuda:0'):
+    # DataParallel used only if multiple GPUs available
+    # net = torch.nn.DataParallel(net)    # wraps model with DataParallel to parallelize training process on GPUs if available
     cudnn.benchmark = True              # enables cuDNN benchmarking mode for best algorithm during convolutional operations
 
 criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
@@ -69,9 +74,11 @@ optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)
 
 
-# Model Complexity Info
-# ------------------------------------------------------
-# Calculates the computational complexity and number of parameters in the model
+'''
+Model Complexity Info
+------------------------------------------------------
+Calculates the computational complexity and number of parameters in the model
+'''
 print ("--> Calculating Model Complexity...")
 
 with torch.cuda.device(0):
@@ -81,8 +88,10 @@ with torch.cuda.device(0):
     print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
 
 
-# Methods
-# ------------------------------------------------------
+'''
+Methods
+------------------------------------------------------
+'''
 def imshow(img):
     '''
     Visualization of training images
@@ -217,8 +226,10 @@ def learningCurve(num_epochs):
     plt.show()
 
 
-# Training and Testing Loop
-# ------------------------------------------------------
+'''
+Training and Testing Loop
+------------------------------------------------------
+'''
 print("--> Training and testing in progress...")
 
 num_epochs = 60
@@ -237,15 +248,17 @@ total_time = end_time - start_time
 print(f'Training and testing completed in {total_time:.2f} seconds.')
 
 
-# Save Trained Model
-# ------------------------------------------------------
+'''
+Save Trained Model
+------------------------------------------------------
+'''
 model_folder = 'Trained_Models'
 if not os.path.exists(model_folder):
     os.makedirs(model_folder)
 
-filename = 'vgg16_trained.pth'
+filename = 'vgg16_trained.pth'  # NOTE: change filename for different models
 
 torch.save(net.state_dict(), os.path.join(model_folder, filename))
 
 # classAccuracy()
-# learningCurve(num_epochs)
+learningCurve(num_epochs)
