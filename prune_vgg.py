@@ -37,19 +37,19 @@ Prune the Model
 '''
 print ("--> Pruning VGG16 Model...")
 pruned_layer = model.features[0]
-pruner.set_pruning_ratio(0.1)
+pruner.set_pruning_ratio(0.9)
 pruner.set_layer(pruned_layer,main_layer=True)
 remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
 model.features[0] = pruner.remove_filter_by_index(remove_filter_idx)
 
 pruned_layer = model.features[1]
-pruner.set_pruning_ratio(0.1)
+pruner.set_pruning_ratio(0.9)
 pruner.set_layer(pruned_layer)
 remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
 model.features[1] = pruner.remove_Bn(remove_filter_idx)
 
 pruned_layer = model.features[3]
-pruner.set_pruning_ratio(0.1)
+pruner.set_pruning_ratio(0.9)
 pruner.set_layer(pruned_layer)
 remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
 model.features[3] = pruner.remove_kernel_by_index(remove_filter_idx)
@@ -65,3 +65,7 @@ with torch.cuda.device(0):
 
     print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
     print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
+
+'''
+Save
+'''

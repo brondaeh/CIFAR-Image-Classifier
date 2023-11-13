@@ -75,20 +75,6 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_ma
 
 
 '''
-Model Complexity Info
-------------------------------------------------------
-Calculates the computational complexity and number of parameters in the model
-'''
-print ("--> Calculating Model Complexity...")
-
-with torch.cuda.device(0):
-    maccs, params = get_model_complexity_info(net, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
-
-    print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
-    print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
-
-
-'''
 Methods
 ------------------------------------------------------
 '''
@@ -223,16 +209,49 @@ def learningCurve(num_epochs):
     plt.title('Learning Curve')
     plt.grid()
     plt.legend()
-    plt.show()
+    # plt.show()
+
+def modelComplexity():
+    '''
+    Calculates model complexity and number of parameters in the model
+    
+    Args: None
+
+    Return: None
+    '''
+    print ("--> Calculating Model Complexity...")
+
+    with torch.cuda.device(0):
+        maccs, params = get_model_complexity_info(net, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
+
+        print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
+        print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
+
+def saveModel(filename):
+    '''
+    Saves the model to Trained_Models folder
+
+    Args:
+    - filename: the desired .pth file name for the model
+
+    Return: None
+    '''
+    model_folder = 'Trained_Models'
+    if not os.path.exists(model_folder):
+        os.makedirs(model_folder)
+
+    torch.save(net.state_dict(), os.path.join(model_folder, filename))
 
 
 '''
-Training and Testing Loop
+Training and Testing
 ------------------------------------------------------
 '''
+modelComplexity()   # obtain model complexity
+
 print("--> Training and testing in progress...")
 
-num_epochs = 60
+num_epochs = 60     # number of training and testing iterations
 start_time = time.time()
 
 for epoch in range(num_epochs):
@@ -247,18 +266,23 @@ end_time = time.time()
 total_time = end_time - start_time
 print(f'Training and testing completed in {total_time:.2f} seconds.')
 
+saveModel('vgg16_trained.pth')
 
-'''
-Save Trained Model
-------------------------------------------------------
-'''
-model_folder = 'Trained_Models'
-if not os.path.exists(model_folder):
-    os.makedirs(model_folder)
-
-filename = 'vgg16_trained.pth'  # NOTE: change filename for different models
-
-torch.save(net.state_dict(), os.path.join(model_folder, filename))
 
 # classAccuracy()
-learningCurve(num_epochs)
+# learningCurve(num_epochs)
+
+'''
+Pseudocode for updating main.py
+------------------------------------------------------
+- calculate model complexity
+- train and test the model in a loop over num_epochs
+- save the trained model
+- create a learning curve and save it to a folder but dont plot it
+- prune the model
+- recalculate model complexity
+- reset total_test_loss and total_train_loss [create a method for this]
+- retrain and retest the model in a loop over num_epochs
+- save the pruned model
+- create a learning curve and save it to a folder but dont plot it
+'''

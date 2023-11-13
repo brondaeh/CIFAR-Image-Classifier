@@ -17,7 +17,7 @@ class pruning_engine(pruning_engine_base):
 
         Args:
         - pruning_method: The pruning method to be used
-        - pruning_ratio: The pruning ratio to be applied
+        - pruning_ratio: The pruning ratio to be applied (percentage of filters pruned)
 
         Return: None
 
@@ -103,11 +103,11 @@ class pruning_engine(pruning_engine_base):
 
             # pruning_criterion is applied to copy_layer to compute the indices of filters for potential pruning, stored to remove_filter_idx list
             remove_filter_idx = self.pruning_criterion(self.copy_layer)
-            # calculate the number of filters to keep from remove_filter_idx based on pruning_ratio
-            # the value is stored to number_pruning_filter and will be used as the index to slice the remove_filter_idx list
+            # calculate the number of filters to prune and store to number_pruning_filter
+            # len(remove_filter_idx) is the total number of potentially pruned filters and self.pruning_ratio is the percentage of filters to keep
             number_pruning_filter = int(len(remove_filter_idx) * self.pruning_ratio)
-            # self.remove_filter_idx is updated to store only the section of indices of remove_filter_idx from index = number_pruning_filter to the end
-            # all filters before number_pruning_filter are pruned
+            # self.remove_filter_idx is updated to store only the section of filter indices of remove_filter_idx from index = number_pruning_filter to the end
+            # all filters before number_pruning_filter are excluded from pruning and this list holds the indices we want to prune
             self.remove_filter_idx = remove_filter_idx[number_pruning_filter:]
 
             if (self.remove_filter_idx_history["previous_layer"] is None):  # if layer is the first layer being pruned (no pruning history)
@@ -167,12 +167,14 @@ class pruning_engine(pruning_engine_base):
         Logic:
         - Remove filters and corresponding kernels from the current convolutional layer based on the pruning ratio
         """
-        if self.copy_layer.bias is not None:
+        if self.copy_layer.bias is not None:    # if there is a bias tensor in the conv layer -> not a batchnorm layer
+            # remove filters by index and update weight and bias
             self.copy_layer.weight.data,self.copy_layer.bias.data = self.base_remove_filter_by_index(weight=self.copy_layer.weight.data.clone(),remove_filter_idx=self.remove_filter_idx_history["current_layer"],bias=self.copy_layer.bias.data.clone())
+            # remove kernels by index and update weight
             self.copy_layer.weight.data = self.base_remove_kernel_by_index(weight=self.copy_layer.weight.data.clone(), remove_filter_idx=self.remove_filter_idx_history["previous_layer"])
             self.copy_layer.out_channels = self.copy_layer.weight.shape[0]
             self.copy_layer.in_channels = self.copy_layer.weight.shape[1]
-        else:
+        else:   # batchnorm layer
             self.copy_layer.weight.data = self.base_remove_filter_by_index(weight=self.copy_layer.weight.data.clone(),remove_filter_idx=self.remove_filter_idx_history["current_layer"])
             self.copy_layer.weight.data = self.base_remove_kernel_by_index(weight=self.copy_layer.weight.data.clone(), remove_filter_idx=self.remove_filter_idx_history["previous_layer"])
             self.copy_layer.out_channels = self.copy_layer.weight.shape[0]

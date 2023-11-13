@@ -8,12 +8,12 @@ class pruning_engine_base:
         Initialize the pruning engine base class
 
         Args:
-        - pruning_ratio: The pruning ratio to be applied (e.g. pruning_ratio = 0.2 retained)
+        - pruning_ratio: The pruning ratio to be applied (percentage of filters pruned)
         - pruning_method: The chosen pruning method
 
         Return: None
         """
-        self.pruning_ratio = 1-pruning_ratio        # 1 - pruning_ratio to obtain percentage of parameters to prune
+        self.pruning_ratio = 1-pruning_ratio        # 1 - pruning_ratio to obtain the percentage of filters kept
         self.pruning_method = pruning_method        # pruning method to be applied
         self.mask_number = 1e10                     # mask_number is a placeholder set to a large number to easily identify elements that need to be pruned
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
