@@ -1,5 +1,5 @@
-# MobileNetV1 Model Details
-## Training parameters to achieve 91.28% accuracy on CIFAR-10 dataset
+# ResNet18 Model Details
+## Training parameters to achieve 93.96% accuracy on CIFAR-10 dataset
 
 - **Batch Size:** 256
 - **Number of Epochs:** 60
