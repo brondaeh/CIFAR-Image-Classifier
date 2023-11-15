@@ -6,3 +6,4 @@ Trained_Models/
 Pruner/Pruning_Criterion/L1norm/__pycache__
 Pruner/Pruning_Criterion/Taylor/__pycache__
 Pruner/__pycache__
+Learning_Curves/
