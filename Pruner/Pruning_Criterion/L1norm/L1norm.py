@@ -3,13 +3,13 @@ import torch
 class L1norm:
     def L1norm_pruning(self,layer):
         """
-        Apply L1 norm pruning to the given layer.
+        Apply L1 norm pruning to the given layer
 
         Args:
-        - layer: The layer to be pruned.
+        - layer: The layer to be pruned
 
         Return:
-        - sorted_indices: The sorted indices of important filters.
+        - sorted_indices: The sorted indices of important filters
 
         Logic:
         1. Clone the weight data of the layer to avoid modifying the original weights.
@@ -24,11 +24,13 @@ class L1norm:
         The importance values indicate the amount of contribution of each filter to the overall model's performance.
         Filters with higher importance values are considered more significant and likely to be kept during pruning.
         """
-        weight = layer.weight.data.clone()
-        if len(weight.shape) == 4:
-            importance = torch.sum(torch.abs(weight),dim=(1,2,3))
-        else:
-            
-            importance = torch.sum(torch.abs(weight),dim=0)
-        sorted_importance, sorted_idx = torch.sort(importance, dim=0, descending=True)
+        weight = layer.weight.data.clone()  # clone the weight data to avoid modifying the original weights
+
+        if len(weight.shape) == 4:  # if conv layer
+            importance = torch.sum(torch.abs(weight),dim=(1,2,3))   # calculate L1norm by summing absolute value of weight along spatial dimensions
+        else:   # if linear layer
+            importance = torch.sum(torch.abs(weight),dim=0)         # calculate L1norm by summing absolute value of weights along input features
+
+        sorted_importance, sorted_idx = torch.sort(importance, dim=0, descending=True)  # sort the filter indices from most to least important
+
         return sorted_idx

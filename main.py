@@ -16,61 +16,13 @@ import matplotlib.pyplot as plt
 
 from Models import *
 from Pruner import *
-from ptflops import get_model_complexity_info
+from utils import save_learning_curve, model_complexity, save_model
 
 
-'''
-Data Preprocessing
-------------------------------------------------------
-Definitions of data augmentations and dataset loaders
-'''
-print("--> Preparing data...")
+total_train_loss = []       # list to track total training loss for each epoch; will be used for plotting a learning curve
+total_test_loss = []        # list to track total test loss
+total_test_accuracy = []    # list to track total test accuracy 
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-print(f'Device: {device}')
-
-transform_train = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(degrees=15),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   # these normalization values are commonly used for CIFAR10 dataset
-])
-transform_test = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-])
-
-trainset = torchvision.datasets.CIFAR10(root='./Data', train=True, download=True, transform=transform_train)
-testset = torchvision.datasets.CIFAR10(root='./Data', train=False, download=True, transform=transform_test)
-
-batch_size = 256
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
-testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
-
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-
-'''
-Methods
-------------------------------------------------------
-'''
-def imshow(img):
-    '''
-    Visualization of training images
-
-    Args:
-    - img: single pytorch tensor image
-
-    Return: None
-    '''
-    img = img / 2 + 0.5                             # unnormalize
-    npimg = img.numpy()                             # convert to numpy array
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
-    plt.show()
-
-total_train_loss = []   # list to track total training loss for learning curve
 def train(model, criterion, optimizer):
     '''
     Trains the model with forward and backprop
@@ -105,7 +57,6 @@ def train(model, criterion, optimizer):
             train_loss = 0.0                                    # reset running training loss
             return avg_train_loss                               # return avg training loss to be displayed
 
-total_test_loss = []    # list to track total test loss for learning curve
 def test(model, criterion):
     '''
     Tests the model on test dataset
@@ -146,19 +97,21 @@ def test(model, criterion):
     test_accuracy = 100 * correct / total                       # calculation of the model's accuracy on the entire test set
 
     total_test_loss.append(avg_test_loss)                       # update the total test loss list with the avg test loss for the current epoch
+    total_test_accuracy.append(test_accuracy)                   # update the total test accuracy list 
     return avg_test_loss, test_accuracy                         # return tuple of avg test loss and test accuracy to be displayed
 
-def reset_losses():
+def reset_trackers():
     '''
-    Resets training and testing losses
+    Resets lists that track training losses, test losses, and test accuracies
 
     Args: None
     
     Return: None
     '''
-    global total_test_loss, total_train_loss
+    global total_test_loss, total_train_loss, total_test_accuracy
     total_train_loss = []
     total_test_loss = []
+    total_test_accuracy = []
 
 def train_and_test(num_epochs, model):
     '''
@@ -174,9 +127,9 @@ def train_and_test(num_epochs, model):
     print("--> Training and testing in progress...")
     criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                     # used to update parameters (weights and biases) to minimize loss function
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)    # scheduler used to adjust learning rate during training
     start_time = time.time()
-    
+
     for epoch in range(num_epochs):
         avg_train_loss = train(model, criterion, optimizer)
         test_data = test(model, criterion)
@@ -218,64 +171,6 @@ def class_accuracy(model):
         accuracy = 100 * float(correct_count) / total_pred[classname]
         print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
-def save_learning_curve(num_epochs, file_name):
-    '''
-    Saves a learning curve figure with training loss and test loss over total epochs
-
-    Args:
-    - num_epochs: number of epochs
-    - file_name: .png file name of the learning curve figure
-
-    Return: None
-    '''
-    plt.plot(range(num_epochs), total_train_loss, label='Training Loss')
-    plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title('Learning Curve')
-    plt.grid()
-    plt.legend()
-
-    folder_name = 'Learning_Curves'
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-    plt.savefig(os.path.join(folder_name, file_name))
-
-    # plt.show()
-
-def model_complexity(model):
-    '''
-    Calculates model complexity and number of parameters in the model
-    
-    Args:
-    - model: the desired model for complexity calculation
-
-    Return: None
-    '''
-    print ("--> Calculating Model Complexity...")
-
-    with torch.cuda.device(0):
-        maccs, params = get_model_complexity_info(model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
-
-        print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
-        print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
-
-def save_model(model, file_name):
-    '''
-    Saves the model to Trained_Models folder
-
-    Args:
-    - model: the model to save
-    - filename: the desired .pth file name for the model
-
-    Return: None
-    '''
-    folder_name = 'Trained_Models'
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-
-    torch.save(model.state_dict(), os.path.join(folder_name, file_name))
-
 def prune(model):
     '''
     Prunes the model
@@ -308,9 +203,36 @@ def prune(model):
 
 
 '''
-Training, Testing, and Pruning
-------------------------------------------------------
+1. Data Preprocessing: creating definitions for desired device, data augmentations, dataset loaders, class and batch size
+2. Training, Testing, and Pruning
 '''
+print("--> Preparing data...")
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(f'Device: {device}')
+
+transform_train = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(degrees=15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   # these normalization values are commonly used for CIFAR10 dataset
+])
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
+trainset = torchvision.datasets.CIFAR10(root='./Data', train=True, download=True, transform=transform_train)
+testset = torchvision.datasets.CIFAR10(root='./Data', train=False, download=True, transform=transform_test)
+
+batch_size = 256
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
+
+classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
 print("--> Initializing model...")
 
 # NOTE: change net for different models
@@ -319,7 +241,7 @@ model = VGG('VGG16')
 # model = MobileNetV2()
 # model = ResNet18()
 
-model_complexity(model)                         # obtain model complexity of the unpruned model
+model_complexity(model, device)                         # obtain model complexity of the unpruned model
 
 file_name = 'vgg16_trained.pth'
 pretrained_model_exists = os.path.exists(os.path.join('Trained_Models', file_name))
@@ -339,34 +261,34 @@ if not pretrained_model_exists:
     train_and_test(num_epochs, model)               # train and test the unpruned model
     save_model(model, file_name)                    # save the trained (unpruned) model
     class_accuracy(model)                           # obtain accuracy across all classes
-    save_learning_curve(num_epochs, 'vgg16_trained_LC.png')
+    save_learning_curve(num_epochs, 'vgg16_trained_LC.png') # save a learning curve figure
 
     # pruning
-    prune(model)
-    model_complexity(model)
+    prune(model)                                    # prune the trained model
+    model_complexity(model, device)                 # obtain model complexity of the pruned model
 
     # retraining and retesting
-    reset_losses()
-    train_and_test(num_epochs, model)
-    save_model(model, 'vgg16_pruned_trained.pth')
-    class_accuracy(model)
-    save_learning_curve(num_epochs, 'vgg16_pruned_trained_LC.png')
+    reset_trackers()                                # reset the tracker of running losses
+    train_and_test(num_epochs, model)               # train and test the pruned model
+    save_model(model, 'vgg16_pruned_trained.pth')   # save the retrained (pruned) model
+    class_accuracy(model)                           # obtain accuracy across all classes
+    save_learning_curve(num_epochs, 'vgg16_pruned_trained_LC.png')  # save a learning curve figure
 
 # else the pretrained model exists: prune the model -> retrain the pruned model
 else: 
     print("--> Pretrained model detected.")
 
-    model.load_state_dict(torch.load('Trained_Models/vgg16_trained.pth', map_location=device))
+    model.load_state_dict(torch.load('Trained_Models/vgg16_trained.pth', map_location=device))  # load the pretrained model
     model = model.to(device)
     if device == torch.device('cuda:0'):
         cudnn.benchmark = True
 
     # pruning
     prune(model)
-    model_complexity(model)
+    model_complexity(model, device)
 
     # retraining and retesting
-    reset_losses()
+    reset_trackers()
     train_and_test(num_epochs, model)
     save_model(model, 'vgg16_pruned_trained.pth')
     class_accuracy(model)
