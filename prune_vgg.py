@@ -1,71 +1,47 @@
-'''Pruning VGG Model'''
+'''VGG Pruning Functions'''
 
 import torch
 
 from Models import *
 from Pruner import *
-from ptflops import get_model_complexity_info
-from torchvision.models import vgg16
 
-'''
-Load Pruning Method and Model
-------------------------------------------------------
-'''
-pruner = pruning_engine(pruning_method='L1norm', individual=True)       # define L1norm pruning method
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') 
-print(f'Device: {device}')
 
-model = VGG('VGG16')
-model.load_state_dict(torch.load('Trained_Models/vgg16_trained.pth', map_location=device))
-model.to(device)
+def uniform_prune_vgg16(model, pruning_ratio):
+    print ("--> Uniformly pruning VGG16 model...")
 
-'''
-Calculate Model Complexity Before Pruning
-------------------------------------------------------
-'''
-print ("--> Calculating Model Complexity Before Pruning...")
+    pruner = pruning_engine(pruning_method='L1norm', individual=True)       # define L1norm pruning method
+    pruner.set_pruning_ratio(pruning_ratio)                                 # set pruning ratio
 
-with torch.cuda.device(0):
-    maccs, params = get_model_complexity_info(model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
+    layer_idx = 0
+    for i, layer_cfg in enumerate(vgg.cfg['VGG16']):    # iterate over the cfg dictionary for VGG16
+        if layer_cfg == 'M':    # skip to next element if maxpool
+            continue
+        else:
+            pruned_layer = model.features[layer_idx]                                        # conv layer: prune filters
+            pruner.set_layer(pruned_layer,main_layer=True)                                  # set pruned_layer in the pruner instance
+            remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]             # obtain filter indices for pruning
+            model.features[layer_idx] = pruner.remove_filter_by_index(remove_filter_idx)    # prune the filters in the layer
 
-    print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
-    print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
+            layer_idx += 1  # increment layer_idx to next batchnorm layer
+            pruned_layer = model.features[layer_idx]                                        # batchnorm layer: prune filters
+            pruner.set_layer(pruned_layer)                                                  # set pruned_layer
+            remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]             # obtain filter indices for pruning
+            model.features[layer_idx] = pruner.remove_Bn(remove_filter_idx)                 # prune filters in the layer
 
-'''
-Prune the Model
-------------------------------------------------------
-'''
-print ("--> Pruning VGG16 Model...")
-pruned_layer = model.features[0]
-pruner.set_pruning_ratio(0.9)
-pruner.set_layer(pruned_layer,main_layer=True)
-remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-model.features[0] = pruner.remove_filter_by_index(remove_filter_idx)
+            if i == 16: # if the end of cfg is reached, prune kernels of the final FC layer (classifier)
+                pruned_layer = model.classifier                                             
+                pruner.set_layer(pruned_layer)                             
+                remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
+                model.classifier = pruner.remove_kernel_by_index(remove_filter_idx, linear=True)
+                break
+            elif i < len(vgg.cfg['VGG16']) - 1: # else if the end of cfg is not reached yet, increment layer_idx if the next element of cfg is a maxpool layer
+                next_layer_cfg = vgg.cfg['VGG16'][i + 1]
 
-pruned_layer = model.features[1]
-pruner.set_pruning_ratio(0.9)
-pruner.set_layer(pruned_layer)
-remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-model.features[1] = pruner.remove_Bn(remove_filter_idx)
+                if next_layer_cfg == 'M':
+                    layer_idx += 1
 
-pruned_layer = model.features[3]
-pruner.set_pruning_ratio(0.9)
-pruner.set_layer(pruned_layer)
-remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-model.features[3] = pruner.remove_kernel_by_index(remove_filter_idx)
-
-'''
-Recalculate Model Complexity After Pruning
-------------------------------------------------------
-'''
-print ("--> Calculating Model Complexity After Pruning...")
-
-with torch.cuda.device(0):
-    maccs, params = get_model_complexity_info(model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
-
-    print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
-    print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
-
-'''
-Save
-'''
+            layer_idx += 2  # increment layer_idx to the next conv layer
+            pruned_layer = model.features[layer_idx]                                        # next conv layer: prune kernels
+            pruner.set_layer(pruned_layer)                                                  # set pruned_layer
+            remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]             # obtain filter indices for pruning
+            model.features[layer_idx] = pruner.remove_kernel_by_index(remove_filter_idx)    # prune kernels in the layer

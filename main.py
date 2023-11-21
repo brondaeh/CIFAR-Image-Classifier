@@ -12,18 +12,18 @@ import torchvision.transforms as transforms
 import os
 import numpy as np
 import time
-import matplotlib.pyplot as plt
 
 from Models import *
 from Pruner import *
-from utils import save_learning_curve, model_complexity, save_model
+from utils import save_learning_curve, model_complexity, save_model, save_pruned_accuracy_curve
+from prune_vgg import uniform_prune_vgg16
 
 
 total_train_loss = []       # list to track total training loss for each epoch; will be used for plotting a learning curve
 total_test_loss = []        # list to track total test loss
 total_test_accuracy = []    # list to track total test accuracy 
 
-def train(model, criterion, optimizer):
+def train(model, criterion, optimizer, batch_size):
     '''
     Trains the model with forward and backprop
 
@@ -31,6 +31,7 @@ def train(model, criterion, optimizer):
     - model: the desired model for training
     - criterion: loss function (usually CrossEntropyLoss)
     - optimizer: algorithm used to minimize loss function (usually SGD)
+    - batch_size: the number of training examples used in one training iteration
 
     Return:
     - avg_train_loss: average training loss for the current epoch
@@ -46,13 +47,14 @@ def train(model, criterion, optimizer):
         outputs = model(inputs)                                 # forward pass to get predictions from model
         loss = criterion(outputs, labels)                       # loss calculation compares predicted outputs and ground-truth labels
 
-        loss.backward()                                         # backward pass to compute gradients
+        loss.backward()                                         # back propogation to compute gradients
         optimizer.step()                                        # update model's weights and biases with gradients
         
         train_loss += loss.item()                               # update current mini-batch loss to running loss
         
-        if batch_index % 195 == 194:                            # print avg loss for current mini-batch, # of training examples/batch size = 50000/256 = 195
-            avg_train_loss = train_loss / 195                   # avg loss calculation, divide by total # of mini-batches
+        total_mini_batches = 50000 // batch_size                        # total # of mini-batches = # of training examples / batch size
+        if batch_index % total_mini_batches == total_mini_batches - 1:  # print avg loss for current mini-batch, # of training examples / batch size = 50000/256 = 195
+            avg_train_loss = train_loss / total_mini_batches            # avg loss calculation, divide by total # of mini-batches
             total_train_loss.append(avg_train_loss)             # update the total training loss list with the next avg training loss for the current mini-batch
             train_loss = 0.0                                    # reset running training loss
             return avg_train_loss                               # return avg training loss to be displayed
@@ -69,7 +71,7 @@ def test(model, criterion):
     - (avg_test_loss, test_accuracy): tuple of average test loss and accuracy for the current epoch
     '''
     test_loss = 0.0                                             # tracks the test loss for the current epoch
-    model.eval()                                                  # enable testing mode on the model
+    model.eval()                                                # enable testing mode on the model
     correct = 0
     total = 0
 
@@ -78,7 +80,7 @@ def test(model, criterion):
             inputs, labels = data                               # assign input image and ground truth label for each mini-batch
             inputs, labels = inputs.to(device), labels.to(device)
 
-            outputs = model(inputs)                               # forward pass: test images sent through network for predictions
+            outputs = model(inputs)                             # forward pass: test images sent through network for predictions
             loss = criterion(outputs, labels)
 
             test_loss += loss.item()                            # calculate test loss
@@ -94,7 +96,7 @@ def test(model, criterion):
             correct += (predicted == labels).sum().item()
 
     avg_test_loss = test_loss / len(testloader)                 # avg test loss calculation, divide by the size of the entire test set
-    test_accuracy = 100 * correct / total                       # calculation of the model's accuracy on the entire test set
+    test_accuracy = 100 * correct / total                       # calculation of the model's test accuracy (%) on the entire test set
 
     total_test_loss.append(avg_test_loss)                       # update the total test loss list with the avg test loss for the current epoch
     total_test_accuracy.append(test_accuracy)                   # update the total test accuracy list 
@@ -112,35 +114,6 @@ def reset_trackers():
     total_train_loss = []
     total_test_loss = []
     total_test_accuracy = []
-
-def train_and_test(num_epochs, model):
-    '''
-    Trains and tests the model for num_epochs
-    Displays the total training and testing time elapsed and outputs average losses for each epoch
-    
-    Args:
-    - num_epochs: the number of iterations for training and testing
-    - model: the desired model
-
-    Return: None
-    '''
-    print("--> Training and testing in progress...")
-    criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
-    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                     # used to update parameters (weights and biases) to minimize loss function
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)    # scheduler used to adjust learning rate during training
-    start_time = time.time()
-
-    for epoch in range(num_epochs):
-        avg_train_loss = train(model, criterion, optimizer)
-        test_data = test(model, criterion)
-        avg_test_loss, test_accuracy = test_data
-        scheduler.step()
-
-        print(f'[Epoch {epoch + 1:>3}]\t Avg Training Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Accuracy: {test_accuracy:.2f}%')
-
-    end_time = time.time()
-    total_time = end_time - start_time
-    print(f'Training and testing completed in {total_time:.2f} seconds.')
 
 def class_accuracy(model):
     '''
@@ -171,41 +144,6 @@ def class_accuracy(model):
         accuracy = 100 * float(correct_count) / total_pred[classname]
         print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
-def prune(model):
-    '''
-    Prunes the model
-
-    Args:
-    - model: the model used for pruning
-
-    Return: None
-    '''
-    print ("--> Pruning model...")
-    pruner = pruning_engine(pruning_method='L1norm', individual=True)       # define L1norm pruning method
-
-    pruned_layer = model.features[0]
-    pruner.set_pruning_ratio(0.2)
-    pruner.set_layer(pruned_layer,main_layer=True)
-    remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-    model.features[0] = pruner.remove_filter_by_index(remove_filter_idx)
-
-    pruned_layer = model.features[1]
-    pruner.set_pruning_ratio(0.2)
-    pruner.set_layer(pruned_layer)
-    remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-    model.features[1] = pruner.remove_Bn(remove_filter_idx)
-
-    pruned_layer = model.features[3]
-    pruner.set_pruning_ratio(0.2)
-    pruner.set_layer(pruned_layer)
-    remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-    model.features[3] = pruner.remove_kernel_by_index(remove_filter_idx)
-
-
-'''
-1. Data Preprocessing: creating definitions for desired device, data augmentations, dataset loaders, class and batch size
-2. Training, Testing, and Pruning
-'''
 print("--> Preparing data...")
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -223,7 +161,6 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
-
 trainset = torchvision.datasets.CIFAR10(root='./Data', train=True, download=True, transform=transform_train)
 testset = torchvision.datasets.CIFAR10(root='./Data', train=False, download=True, transform=transform_test)
 
@@ -235,61 +172,69 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 print("--> Initializing model...")
 
-# NOTE: change net for different models
+# NOTE: make changes to model, file_name, for different models
 model = VGG('VGG16')
 # model = MobileNet()
 # model = MobileNetV2()
 # model = ResNet18()
 
-model_complexity(model, device)                         # obtain model complexity of the unpruned model
+model_file_name = 'vgg16_trained.pth'   # .pth file name to save the trained model
+LC_file_name = 'vgg16_trained_LC.png'   # .png file name to save the learning curve
+LC_title = 'VGG16 Learning Curve'       # title of the learning curve
+pretrained_model_exists = os.path.exists(os.path.join('Trained_Models', model_file_name))   # boolean flag to check whether a saved pretrained model exists
+num_epochs = 60                         # number of training iterations
 
-file_name = 'vgg16_trained.pth'
-pretrained_model_exists = os.path.exists(os.path.join('Trained_Models', file_name))
+criterion = nn.CrossEntropyLoss()                                                                       # applies softmax   
+optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.001)                     # used to update parameters (weights and biases) to minimize loss function
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=60, eta_min=0.001)    # scheduler used to adjust learning rate during training
 
-num_epochs = 60                                 # number of training and testing iterations
+model_complexity(model, device)     # obtain model complexity of the unpruned model
 
-# if the pretrained model does not exist: train the unpruned model -> prune the model -> retrain the pruned model
-if not pretrained_model_exists:
+if not pretrained_model_exists:     # if the pretrained model does not exist: train the unpruned model
     print("--> Pretrained model not found.")
 
-    model = model.to(device)                        # moves model to device to ensure the next computations are performed on the specified device
+    model = model.to(device)                # moves model to device to ensure the next computations are performed on the specified device
     if device == torch.device('cuda:0'):
-        # net = torch.nn.DataParallel(net)          # wraps model with DataParallel to parallelize training process on GPUs if available
-        cudnn.benchmark = True                      # enables cuDNN benchmarking mode for best algorithm during convolutional operations
+        cudnn.benchmark = True              # enables cuDNN benchmarking mode for best algorithm during convolutional operations
 
-    # training and testing
-    train_and_test(num_epochs, model)               # train and test the unpruned model
-    save_model(model, file_name)                    # save the trained (unpruned) model
-    class_accuracy(model)                           # obtain accuracy across all classes
-    save_learning_curve(num_epochs, 'vgg16_trained_LC.png') # save a learning curve figure
+    # training and testing loop
+    print("--> Training and testing in progress...")
+    start_time = time.time()
 
-    # pruning
-    prune(model)                                    # prune the trained model
-    model_complexity(model, device)                 # obtain model complexity of the pruned model
+    for epoch in range(num_epochs):
+        avg_train_loss = train(model, criterion, optimizer, batch_size)
+        test_data = test(model, criterion)
+        avg_test_loss, test_accuracy = test_data
+        scheduler.step()
+        print(f'[Epoch {epoch + 1:>3}/{num_epochs}]\t Avg Train Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Acc: {test_accuracy:.2f}%')
 
-    # retraining and retesting
-    reset_trackers()                                # reset the tracker of running losses
-    train_and_test(num_epochs, model)               # train and test the pruned model
-    save_model(model, 'vgg16_pruned_trained.pth')   # save the retrained (pruned) model
-    class_accuracy(model)                           # obtain accuracy across all classes
-    save_learning_curve(num_epochs, 'vgg16_pruned_trained_LC.png')  # save a learning curve figure
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f'Training and testing completed in {total_time:.2f} seconds.')
 
-# else the pretrained model exists: prune the model -> retrain the pruned model
-else: 
+    save_model(model, model_file_name)
+    class_accuracy(model)
+    save_learning_curve(num_epochs, LC_file_name, LC_title)
+else:   # else the pretrained model exists: load the trained (unpruned) model
     print("--> Pretrained model detected.")
 
-    model.load_state_dict(torch.load('Trained_Models/vgg16_trained.pth', map_location=device))  # load the pretrained model
+    model.load_state_dict(torch.load(os.path.join('Trained_Models', model_file_name), map_location=device))
     model = model.to(device)
     if device == torch.device('cuda:0'):
         cudnn.benchmark = True
 
-    # pruning
-    prune(model)
-    model_complexity(model, device)
+# loop to uniformly prune the model and retest the model at pruning ratio increments of 5%
+reset_trackers()
 
-    # retraining and retesting
-    reset_trackers()
-    train_and_test(num_epochs, model)
-    save_model(model, 'vgg16_pruned_trained.pth')
-    class_accuracy(model)
-    save_learning_curve(num_epochs, 'vgg16_pruned_trained_LC.png')    
+for i in range(0,19):   # iterate over pruning ratios from 5% to 95%
+    pruning_ratio = 0.05
+    uniform_prune_vgg16(model, pruning_ratio)
+    test_data = test(model, criterion)
+    avg_test_loss, test_accuracy = test_data
+    print(f'[Pruning Ratio: {0.05 + i * pruning_ratio:.2f}]\t Test Accuracy: {test_accuracy:.2f}%')
+
+save_pruned_accuracy_curve('vgg16_L1norm_uniformly_pruned_AC.png', total_test_accuracy, 'VGG16 L1norm Uniformly Pruned Accuracy Curve')
+
+'''
+Prune the model and implement fine-tuning with original weights
+'''

@@ -1,3 +1,5 @@
+'''Utility Functions'''
+
 import torch
 
 import os
@@ -23,7 +25,7 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
     plt.show()
 
-def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss):
+def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss, title):
     '''
     Saves a learning curve figure: training loss and test loss over total epochs
 
@@ -32,6 +34,7 @@ def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss
     - file_name: .png file name of the learning curve figure
     - total_train_loss: list that tracks the running loss for each epoch during training
     - total_test_loss: list that tracks the running loss for each epoch during testing
+    - title: title of the figure
 
     Return: None
     '''
@@ -39,10 +42,9 @@ def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss
     plt.plot(range(num_epochs), total_test_loss, label='Test Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.title('Learning Curve')
+    plt.title(title)
     plt.grid()
     plt.legend()
-    # plt.show()
 
     folder_name = 'Learning_Curves'
     if not os.path.exists(folder_name):
@@ -62,7 +64,7 @@ def model_complexity(model, device):
 
     Return: None
     '''
-    print ("--> Calculating Model Complexity...")
+    print ("--> Calculating model complexity...")
 
     if device == 'cuda:0':
         with torch.cuda.device(device):
@@ -94,11 +96,30 @@ def save_model(model, file_name):
 
     print(f"--> Model saved to: {os.path.join(folder_name, file_name)}")
 
-def save_accuracy_curve(file_name, ):
+def save_pruned_accuracy_curve(file_name, total_test_accuracy, title):
     '''
     Saves an accuracy curve figure: accuracy (%) over pruning ratio
 
     Args:
-    - 
+    - file_name: the desired .png file name for the accuracy curve
+    - total_test_accuracy: list of test accuracies
+    - title: title of the figure
+
+    Return: None
     '''
-    pass
+    pruning_ratios = list(range(5, 100, 5))
+    plt.plot(pruning_ratios, total_test_accuracy, marker='o', linestyle='-')
+    plt.title(title)
+    plt.xlabel('Pruning Ratio (%)')
+    plt.ylabel('Accuracy (%)')
+    plt.xticks(pruning_ratios)
+    plt.yticks(range(0, 101, 10))
+    plt.grid()
+
+    folder_name = 'Accuracy_Curves'
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    plt.savefig(os.path.join(folder_name, file_name))
+    plt.close()
+
+    print(f"--> Accuracy curve saved to: {os.path.join(folder_name, file_name)}")
