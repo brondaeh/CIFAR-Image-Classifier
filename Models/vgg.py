@@ -37,12 +37,3 @@ class VGG(nn.Module):
                 in_channels = x                             # set input channels of next layer to current number of output channels
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]   # append an average pool layer to the layers list
         return nn.Sequential(*layers)                       # return a nn.Sequential container of all conv layers
-
-# Method to initialize a VGG model instance
-# def initModel():
-#     net = VGG('VGG11')
-#     x = torch.randn(2,3,32,32)
-#     y = net(x)
-#     print(y.size())
-
-# initModel()

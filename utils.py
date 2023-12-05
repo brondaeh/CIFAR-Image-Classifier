@@ -25,7 +25,7 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
     plt.show()
 
-def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss, title):
+def saveLearningCurve(num_epochs, file_name, total_train_loss, total_test_loss, title):
     '''
     Saves a learning curve figure: training loss and test loss over total epochs
 
@@ -45,6 +45,8 @@ def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss
     plt.title(title)
     plt.grid()
     plt.legend()
+    plt.ylim(0, 3)
+    plt.xlim(0, num_epochs)
 
     folder_name = 'Learning_Curves'
     if not os.path.exists(folder_name):
@@ -54,7 +56,7 @@ def save_learning_curve(num_epochs, file_name, total_train_loss, total_test_loss
 
     print(f"--> Learning curve saved to: {os.path.join(folder_name, file_name)}")
 
-def model_complexity(model, device):
+def modelComplexity(model, device):
     '''
     Calculates model complexity and number of parameters in the model
     
@@ -78,7 +80,7 @@ def model_complexity(model, device):
         print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
         print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
 
-def save_model(model, file_name):
+def saveModel(model, file_name):
     '''
     Saves the model to Trained_Models folder
 
@@ -96,7 +98,7 @@ def save_model(model, file_name):
 
     print(f"--> Model saved to: {os.path.join(folder_name, file_name)}")
 
-def save_pruned_accuracy_curve(file_name, total_test_accuracy, title):
+def savePrunedAccuracyCurve(file_name, total_test_accuracy, title):
     '''
     Saves an accuracy curve figure: accuracy (%) over pruning ratio
 

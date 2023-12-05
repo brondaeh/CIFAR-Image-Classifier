@@ -5,8 +5,16 @@ import torch
 from Models import *
 from Pruner import *
 
+def uniformPruneVGG16(model, pruning_ratio):
+    '''
+    Prunes every layer of the VGG16 model by the specified pruning ratio (excluding layers without parameters i.e. pooling and activation layers)
 
-def uniform_prune_vgg16(model, pruning_ratio):
+    Args:
+    - model: the trained VGG16 model
+    - pruning_ratio: the desired ratio of filters to prune
+
+    Return: None
+    '''
     print ("--> Uniformly pruning VGG16 model...")
 
     pruner = pruning_engine(pruning_method='L1norm', individual=True)       # define L1norm pruning method
