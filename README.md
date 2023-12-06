@@ -1,4 +1,4 @@
-# pytorch-cifar10
+# CIFAR Image Classifier
 
 ## Introduction
 In this project, multiple CNN architectures are used to train image classification models on the CIFAR-10 dataset. Model compression methods like network pruning are also explored to reduce the size of the neural network by removing redundant parameters which leads to improved computational efficiency during inference.
