@@ -1,0 +1,34 @@
+# Configuration for training CNN models on CIFAR
+
+Train_Config:
+  model:
+    VGG16
+    # MobileNetV1
+    # MobileNetV2
+    # ResNet18
+  num_epochs: 200
+  batch_size: 256
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 0.001
+  dataset:
+    CIFAR10
+    # CIFAR100
+  model_folder_name: Trained_Models             # name of folder to save .pth files of trained models
+  model_file_name: vgg16_cifar10_trained.pth    # .pth file name to save the trained model
+  LC_file_name: vgg16_cifar10_trained_LC.png    # .png file name to save the learning curve of the trained model
+  LC_title: VGG16 Learning Curve CIFAR-10       # title of the learning curve figure
+
+Prune_Config:
+  desired_pruning_ratio: 10     # pruning ratio % at which to save the pruned model
+  num_epochs: 20
+  batch_size: 256
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 0.001
+  pruned_model_file_name: vgg16_cifar10_L1_uniform_{desired_pruning_ratio}.pth                  # file name for the pruned model that will be saved
+  AC_file_name: vgg16_cifar10_L1_uniformly_pruned_AC.png                                        # .png file name to save the accuracy curve after uniform pruning
+  AC_title: VGG16 L1 Uniformly Pruned Accuracy Curve CIFAR-10                                   # title of the accuracy curve figure
+  pruned_LC_file_name: vgg16_cifar10_L1_uniform_{desired_pruning_ratio}_trained_LC.png          # .png file name to save the learning curve of the fine-tuned model
+  pruned_LC_title: VGG16 L1 Uniformly Pruned {desired_pruning_ratio}% Learning Curve CIFAR-10   # title of the learning curve figure
+  

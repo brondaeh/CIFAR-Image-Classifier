@@ -1,4 +1,4 @@
-'''Utility Functions'''
+'''Helper Functions'''
 
 import torch
 
@@ -100,7 +100,7 @@ def saveModel(model, file_name):
 
 def savePrunedAccuracyCurve(file_name, total_test_accuracy, title):
     '''
-    Saves an accuracy curve figure: accuracy (%) over pruning ratio
+    Saves an accuracy curve figure: accuracy (%) over pruning ratio (%)
 
     Args:
     - file_name: the desired .png file name for the accuracy curve
