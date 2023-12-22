@@ -15,8 +15,6 @@ def uniformPruneVGG16(model, pruning_ratio):
 
     Return: None
     '''
-    print ("--> Uniformly pruning VGG16 model...")
-
     pruner = pruning_engine(pruning_method='L1norm', individual=True)       # define L1norm pruning method
     pruner.set_pruning_ratio(pruning_ratio)                                 # set pruning ratio
 
@@ -30,17 +28,30 @@ def uniformPruneVGG16(model, pruning_ratio):
             remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]             # obtain filter indices for pruning
             model.features[layer_idx] = pruner.remove_filter_by_index(remove_filter_idx)    # prune the filters in the layer
 
-            layer_idx += 1  # increment layer_idx to next batchnorm layer
+            layer_idx += 1                                                                  # increment layer_idx to next batchnorm layer
+            
             pruned_layer = model.features[layer_idx]                                        # batchnorm layer: prune filters
             pruner.set_layer(pruned_layer)                                                  # set pruned_layer
             remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]             # obtain filter indices for pruning
             model.features[layer_idx] = pruner.remove_Bn(remove_filter_idx)                 # prune filters in the layer
 
-            if i == 16: # if the end of cfg is reached, prune kernels of the final FC layer (classifier)
-                pruned_layer = model.classifier                                             
-                pruner.set_layer(pruned_layer)                             
-                remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
-                model.classifier = pruner.remove_kernel_by_index(remove_filter_idx, linear=True)
+            if i == 16: # if the end of cfg is reached, prune filters and kernels of the final FC layers (classifier)
+                fc_layer_idx = 0
+                while fc_layer_idx < 7:
+                    pruned_layer = model.classifier[fc_layer_idx]                                    
+                    pruner.set_layer(pruned_layer)                             
+                    remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
+                    model.classifier[fc_layer_idx] = pruner.remove_kernel_by_index(remove_filter_idx, linear=True)
+
+                    if fc_layer_idx == 6:
+                        break
+
+                    pruned_layer = model.classifier[fc_layer_idx]                                    
+                    pruner.set_layer(pruned_layer, main_layer=True)                             
+                    remove_filter_idx = pruner.get_remove_filter_idx()["current_layer"]
+                    model.classifier[fc_layer_idx] = pruner.remove_filter_by_index(remove_filter_idx, linear=True)
+
+                    fc_layer_idx += 3
                 break
             elif i < len(vgg.cfg['VGG16']) - 1: # else if the end of cfg is not reached yet, increment layer_idx if the next element of cfg is a maxpool layer
                 next_layer_cfg = vgg.cfg['VGG16'][i + 1]

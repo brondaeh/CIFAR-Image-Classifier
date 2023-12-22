@@ -12,11 +12,19 @@ cfg = {
 }
 
 class VGG(nn.Module):
-    def __init__(self, vgg_name):                           # vgg_name specifies variant
+    def __init__(self, vgg_name, num_classes=10):           # vgg_name specifies variant
         super(VGG, self).__init__()
         self.version = vgg_name
         self.features = self._make_layers(cfg[vgg_name])    # call _make_layers() to create conv layers based on vgg_name from cfg
-        self.classifier = nn.Linear(512, 10)                # linear layer that maps output of conv layers to class scores
+        self.classifier = nn.Sequential(
+            nn.Linear(512, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, num_classes)
+        )
 
     def forward(self, x):
         out = self.features(x)                              # x passed thru conv layers

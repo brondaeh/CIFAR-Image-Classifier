@@ -14,6 +14,7 @@ Train_Config:
   dataset:
     CIFAR10
     # CIFAR100
+  pruning_flag: True                           # boolean if the model will be pruned (True to prune, False to not prune) TRUE ONLY FOR VGG
   model_folder_name: Trained_Models             # name of folder to save .pth files of trained models
   model_file_name: vgg16_cifar10_trained.pth    # .pth file name to save the trained model
   LC_file_name: vgg16_cifar10_trained_LC.png    # .png file name to save the learning curve of the trained model

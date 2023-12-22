@@ -19,12 +19,12 @@ from Pruner import *
 from Pruning_Functions import *
 from utils import saveLearningCurve, modelComplexity, saveModel, savePrunedAccuracyCurve
 
-# Create lists to track the total train loss, test loss and test accuracies
+# Create lists to track the total train loss, test loss, and test accuracies
 total_train_loss = []
 total_test_loss = []
 total_test_accuracy = []
 
-# Specify device the to use; if GPU not available then use CPU
+# Specify the device to use; if GPU not available then use CPU
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(f'Chosen device: {device}')
 
@@ -38,6 +38,7 @@ learning_rate = train_config['learning_rate']
 momentum = train_config['momentum']
 weight_decay = train_config['weight_decay']
 dataset = train_config['dataset']
+pruning_flag = train_config['pruning_flag']
 model_folder_name = train_config['model_folder_name']
 model_file_name = train_config['model_file_name']
 LC_file_name = train_config['LC_file_name']
@@ -48,10 +49,12 @@ if dataset == 'CIFAR10':
     dataset_mean = [0.4914, 0.4822, 0.4465]
     dataset_std = [0.2470, 0.2435, 0.2616]
     input_size = 32
+    num_classes = 10
 elif dataset == 'CIFAR100':
     dataset_mean = [0.5071, 0.4867, 0.4408]
     dataset_std = [0.2675, 0.2565, 0.2761]
     input_size = 32
+    num_classes = 100
 else:
     raise ValueError('Invalid dataset name. Please specify either CIFAR10 or CIFAR100 in config.yaml.')
 
@@ -79,23 +82,25 @@ elif dataset == 'CIFAR100':
     trainset = torchvision.datasets.CIFAR100(root='./Data', train=True, transform=transform_train, download=True)
     testset = torchvision.datasets.CIFAR100(root='./Data', train=False, transform=transform_test, download=True)
 
-# Data loaders for training and testing
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
-
 classes = trainset.classes
 
 print('--> Preparing model...')
 if train_config['model'] == 'VGG16':
-    model = VGG('VGG16')
+    model = VGG('VGG16', num_classes=num_classes)
+    pruned_model = VGG('VGG16',num_classes=num_classes)
 elif train_config['model'] == 'MobileNetV1':
-    model = MobileNet()
+    model = MobileNet(num_classes=num_classes)
+    pruned_model = MobileNet(num_classes=num_classes)
 elif train_config['model'] == 'MobileNetV2':
-    model = MobileNetV2()
+    model = MobileNetV2(num_classes=num_classes)
+    pruned_model = MobileNetV2(num_classes=num_classes)
 elif train_config['model'] == 'ResNet18':
-    model = ResNet18()
+    model = ResNet18(num_classes=num_classes)
+    pruned_model = ResNet18(num_classes=num_classes)
 else:
-    raise ValueError('Invalid model name.')
+    raise ValueError('Invalid model name. Please specify the model name in config.yaml.')
 
 def train(model, criterion, optimizer, batch_size):
     '''
@@ -237,25 +242,22 @@ pretrained_model_exists = os.path.exists(os.path.join(model_folder_name, model_f
 if not pretrained_model_exists:
     print('--> Pretrained model not found.')
     model = model.to(device)
-    if device == torch.device('cuda:0'):
-        cudnn.benchmark = True
+    if device == torch.device('cuda:0'): cudnn.benchmark = True
 
     # Training and testing loop
     print('--> Training and testing in progress...')
     start_time = time.time()
-
     for epoch in range(num_epochs):
         avg_train_loss = train(model, criterion, optimizer, batch_size)
         test_data = test(model, criterion)
         avg_test_loss, test_accuracy = test_data
         scheduler.step()
         print(f'[Epoch {epoch + 1:>3}/{num_epochs}]\t Avg Train Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Acc: {test_accuracy:.2f}%')
-
     end_time = time.time()
     total_time = end_time - start_time
     print(f'Training and testing completed in {total_time:.2f} seconds.')
 
-    saveModel(model, model_file_name)
+    saveModel(model, model_file_name, model_folder_name)
     saveLearningCurve(num_epochs, LC_file_name, total_train_loss, total_test_loss, LC_title)
     classAccuracy(model)
 # Else the pretrained model exists -> load the pretrained model (unpruned)
@@ -263,11 +265,14 @@ else:
     print('--> Pretrained model detected.')
     model.load_state_dict(torch.load(os.path.join('Trained_Models', model_file_name), map_location=device))
     model = model.to(device)
-    if device == torch.device('cuda:0'):
-        cudnn.benchmark = True
+    if device == torch.device('cuda:0'): cudnn.benchmark = True
     classAccuracy(model)
 
-# Read config.yaml file to load pruning parameters
+# Stop point if the model will not be pruned
+if not pruning_flag:
+    raise Exception("Stop point: pruning will not be executed.")
+
+# Read the config.yaml file to load pruning parameters
 with open('config.yaml', 'r') as f:
     prune_config = yaml.load(f, yaml.FullLoader)['Prune_Config']
 
@@ -288,21 +293,21 @@ resetTrackers()
 
 # If a pruned model is not found -> prune the model for pruning ratios for 5% to 95% in increments of 5%
 if not pruned_model_exists:
+    print('--> Uniformly pruning the model...')
     for ratio in np.arange(5, 100, 5).tolist():
         if train_config['model'] == 'VGG16':            # create a new instance of the same model architecture called model_copy
-            model_copy = VGG('VGG16')
+            model_copy = VGG('VGG16', num_classes=num_classes)
         elif train_config['model'] == 'MobileNetV1':
-            model_copy = MobileNet()
+            model_copy = MobileNet(num_classes=num_classes)
         elif train_config['model'] == 'MobileNetV2':
-            model_copy = MobileNetV2()
+            model_copy = MobileNetV2(num_classes=num_classes)
         elif train_config['model'] == 'ResNet18':
-            model_copy = ResNet18()
+            model_copy = ResNet18(num_classes=num_classes)
         else:
             raise ValueError('Invalid model name.')
         model_copy.load_state_dict(model.state_dict())  # load weights of the pretrained unpruned model to model_copy
         model_copy = model_copy.to(device)
-        if device == torch.device('cuda:0'):
-            cudnn.benchmark = True
+        if device == torch.device('cuda:0'): cudnn.benchmark = True
 
         pruning_ratio = ratio / 100
         uniformPruneVGG16(model_copy, pruning_ratio)    # prune the copied model
@@ -311,42 +316,36 @@ if not pruned_model_exists:
         print(f'[Pruning Ratio: {ratio}%]\t Test Accuracy: {test_accuracy:.2f}%')
 
         if ratio == desired_pruning_ratio:              # save pruned model only for the desired pruning ratio
-            saveModel(model_copy, pruned_model_file_name)
+            saveModel(model_copy, pruned_model_file_name, model_folder_name)
 
     savePrunedAccuracyCurve(AC_file_name, total_test_accuracy, AC_title)
 else:
     print('--> Pruned model detected.')
 
-# Fine-tune the pruned model by first loading the pruned model path to a model of the same architecture
-pruned_model = VGG('VGG16')
+# Fine-tune the pruned model by first loading the pruned model path to a model of the same pruned architecture
 pruned_model = pruned_model.to(device)
-if device == torch.device('cuda:0'):
-    cudnn.benchmark = True
-
-uniformPruneVGG16(pruned_model, desired_pruning_ratio / 100)                                        # prune the model to match its architecture with the saved pruned model
-pruned_model.load_state_dict(torch.load(os.path.join('Trained_Models', pruned_model_file_name)))    # load the pruned model
-modelComplexity(pruned_model, device)                                                               # calculate model compexity
+if device == torch.device('cuda:0'): cudnn.benchmark = True
+uniformPruneVGG16(pruned_model, desired_pruning_ratio / 100)
+pruned_model.load_state_dict(torch.load(os.path.join('Trained_Models', pruned_model_file_name)))
+modelComplexity(pruned_model, device)
 
 criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=num_epochs)
 
-# Fine-tuning loop (same procedure as training and testing loop used previously)
 resetTrackers()
 print("--> Fine-tuning in progress...")
 start_time = time.time()
-
 for epoch in range(num_epochs):
     avg_train_loss = train(pruned_model, criterion, optimizer, batch_size)
     test_data = test(pruned_model, criterion)
     avg_test_loss, test_accuracy = test_data
     scheduler.step()
     print(f'[Epoch {epoch + 1:>3}/{num_epochs}]\t Avg Train Loss: {avg_train_loss:.3f}\t Avg Test Loss: {avg_test_loss:.3f}\t Test Acc: {test_accuracy:.2f}%')
-
 end_time = time.time()
 total_time = end_time - start_time
 print(f'Fine-tuning completed in {total_time:.2f} seconds.')
 
-saveModel(pruned_model, pruned_model_file_name)
+saveModel(pruned_model, pruned_model_file_name, model_folder_name)
 saveLearningCurve(num_epochs, pruned_LC_file_name, total_train_loss, total_test_loss, pruned_LC_title)
 classAccuracy(pruned_model)

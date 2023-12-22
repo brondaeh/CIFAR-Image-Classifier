@@ -1,13 +1,9 @@
-'''Helper Functions'''
-
 import torch
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ptflops import get_model_complexity_info
-
 
 def imshow(img):
     '''
@@ -19,7 +15,6 @@ def imshow(img):
     Return: None
     '''
     print("--> Visualizing training images...")
-
     img = img / 2 + 0.5                             # unnormalize
     npimg = img.numpy()                             # convert to numpy array
     plt.imshow(np.transpose(npimg, (1, 2, 0)))      # change order of dimensions from pytorch (channels, height, wdith) -> plt (height, width, channels)
@@ -45,7 +40,7 @@ def saveLearningCurve(num_epochs, file_name, total_train_loss, total_test_loss, 
     plt.title(title)
     plt.grid()
     plt.legend()
-    plt.ylim(0, 3)
+    plt.ylim(0, 5)
     plt.xlim(0, num_epochs)
 
     folder_name = 'Learning_Curves'
@@ -53,7 +48,6 @@ def saveLearningCurve(num_epochs, file_name, total_train_loss, total_test_loss, 
         os.makedirs(folder_name)
     plt.savefig(os.path.join(folder_name, file_name))
     plt.close()
-
     print(f"--> Learning curve saved to: {os.path.join(folder_name, file_name)}")
 
 def modelComplexity(model, device):
@@ -67,35 +61,30 @@ def modelComplexity(model, device):
     Return: None
     '''
     print ("--> Calculating model complexity...")
-
     if device == 'cuda:0':
         with torch.cuda.device(device):
             maccs, params = get_model_complexity_info(model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
-
             print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
             print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
     else:
         maccs, params = get_model_complexity_info(model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True)
-
         print('{:<30}  {:<8}'.format('Computational Complexity: ', maccs))
         print('{:<30}  {:<8}'.format('Number of Parameters: ', params))
 
-def saveModel(model, file_name):
+def saveModel(model, file_name, folder_name):
     '''
     Saves the model to Trained_Models folder
 
     Args:
     - model: the model to save
-    - filename: the desired .pth file name for the model
+    - file_name: the desired .pth file name for the model
+    - folder_name: the folder to store the model file
 
     Return: None
     '''
-    folder_name = 'Trained_Models'
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
-
     torch.save(model.state_dict(), os.path.join(folder_name, file_name))
-
     print(f"--> Model saved to: {os.path.join(folder_name, file_name)}")
 
 def savePrunedAccuracyCurve(file_name, total_test_accuracy, title):
@@ -123,5 +112,4 @@ def savePrunedAccuracyCurve(file_name, total_test_accuracy, title):
         os.makedirs(folder_name)
     plt.savefig(os.path.join(folder_name, file_name))
     plt.close()
-
     print(f"--> Accuracy curve saved to: {os.path.join(folder_name, file_name)}")
