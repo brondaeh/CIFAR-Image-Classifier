@@ -203,7 +203,8 @@ def classAccuracy(model):
     Args:
     - model: the model used to calculate class accuracies
 
-    Return: None
+    Return:
+    - overall_accuracy: the top1 accuracy for the model
     '''
     correct_pred = {classname: 0 for classname in classes}
     total_pred = {classname: 0 for classname in classes}
@@ -230,6 +231,8 @@ def classAccuracy(model):
 
     overall_accuracy = (correct_samples / total_samples) * 100.0
     print(f'Top1 accuracy: {overall_accuracy:.2f}%')
+
+    return overall_accuracy
 
 criterion = nn.CrossEntropyLoss(label_smoothing=0.1)                                                        # criterion for classification tasks; applies softmax   
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)   # optimizer used to update parameters (weights and biases) to minimize loss function
@@ -259,14 +262,14 @@ if not pretrained_model_exists:
 
     saveModel(model, model_file_name, model_folder_name)
     saveLearningCurve(num_epochs, LC_file_name, total_train_loss, total_test_loss, LC_title)
-    classAccuracy(model)
+    top1_acc = classAccuracy(model)
 # Else the pretrained model exists -> load the pretrained model (unpruned)
 else:
     print('--> Pretrained model detected.')
     model.load_state_dict(torch.load(os.path.join('Trained_Models', model_file_name), map_location=device))
     model = model.to(device)
     if device == torch.device('cuda:0'): cudnn.benchmark = True
-    classAccuracy(model)
+    top1_acc = classAccuracy(model)
 
 # Stop point if the model will not be pruned
 if not pruning_flag:
@@ -290,6 +293,7 @@ pruned_LC_title = prune_config['pruned_LC_title'].format(desired_pruning_ratio=d
 pruned_model_exists = os.path.exists(os.path.join(model_folder_name, pruned_model_file_name))      # boolean flag to check whether a saved pruned model exists
 
 resetTrackers()
+total_test_accuracy.append(top1_acc)
 
 # If a pruned model is not found -> prune the model for pruning ratios for 5% to 95% in increments of 5%
 if not pruned_model_exists:
@@ -348,4 +352,4 @@ print(f'Fine-tuning completed in {total_time:.2f} seconds.')
 
 saveModel(pruned_model, pruned_model_file_name, model_folder_name)
 saveLearningCurve(num_epochs, pruned_LC_file_name, total_train_loss, total_test_loss, pruned_LC_title)
-classAccuracy(pruned_model)
+top1_acc = classAccuracy(pruned_model)

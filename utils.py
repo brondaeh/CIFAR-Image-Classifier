@@ -98,7 +98,7 @@ def savePrunedAccuracyCurve(file_name, total_test_accuracy, title):
 
     Return: None
     '''
-    pruning_ratios = list(range(5, 100, 5))
+    pruning_ratios = list(range(0, 100, 5))
     plt.plot(pruning_ratios, total_test_accuracy, marker='o', linestyle='-')
     plt.title(title)
     plt.xlabel('Pruning Ratio (%)')
