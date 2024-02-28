@@ -17,6 +17,53 @@ In this project, multiple CNN architectures are used to train image classificati
 |  CIFAR100 |[MobileNetV2](Model_Details/mobilenetv2_details.md) |  -                |  -  | 2.41  | 75.96 |
 |  CIFAR100 |[ResNet18](Model_Details/resnet18_details.md)       |  -                |  -  | 11.22 | 77.32 |
 
+## Getting Started
+1. Clone the repository to the desired directory:
+```bash
+git clone https://github.com/brondaeh/CIFAR-Image-Classifier.git
+```
+2. Install the required libraries to your environment:
+```bash
+pip install -r requirements.txt
+```
+3. Modify the configuration parameters in config.yaml.
+    - NOTE:
+    - Set enable_gpu to True if you have a cuda enabled GPU for training.
+    - By default L1 norm pruning is only applicable for VGG16, keep pruning_flag to False for other models.
+4. Start training and testing by running main.py.
+
+## File Structure
+```bash
+CIFAR-Image-Classifier
+├── Model_Details
+│   ├── mobilenetv1_details.md
+│   ├── mobilenetv2_details.md
+│   ├── resnet18_details.md
+│   └── vgg16_details.md
+├── Models
+│   ├── mobilenetv1.py
+│   ├── mobilenetv2.py
+│   ├── resnet.py
+│   └── vgg.py
+├── Pruner
+│   ├── Pruning_Criterion
+│   |   ├── KMean
+│   |   |   └── KMean_base.py
+│   |   ├── L1norm
+│   |   |   └── L1norm.py
+│   |   ├── Taylor
+│   |   |   └── Taylor.py
+│   ├── pruning_engine_base.py
+│   └── pruning_engine.py
+├── Pruning_Functions
+│   └── prune_vgg.py
+├── config.yaml
+├── main.py
+├── README.md
+├── requirements.txt
+├── utils.py
+```
+
 ## References
 - [CNN-Pruning-Engine](https://github.com/MIC-Laboratory/CNN-Pruning-Engine)
 - [pytorch-cifar](https://github.com/kuangliu/pytorch-cifar)

@@ -24,14 +24,11 @@ total_train_loss = []
 total_test_loss = []
 total_test_accuracy = []
 
-# Specify the device to use; if GPU not available then use CPU
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-print(f'Chosen device: {device}')
-
 # Read the config.yaml file to load training parameters
 with open('config.yaml', 'r') as f:
     train_config = yaml.load(f, yaml.FullLoader)['Train_Config']
 
+enable_gpu = train_config['enable_gpu']
 num_epochs = train_config['num_epochs']
 batch_size = train_config['batch_size']
 learning_rate = train_config['learning_rate']
@@ -43,6 +40,10 @@ model_folder_name = train_config['model_folder_name']
 model_file_name = train_config['model_file_name']
 LC_file_name = train_config['LC_file_name']
 LC_title = train_config['LC_title']
+
+# Specify the device to use; if GPU not available then use CPU
+device = torch.device('cuda:0' if torch.cuda.is_available() and enable_gpu else 'cpu')
+print(f'Chosen device: {device}')
 
 # Choose dataset mean and std based on the chosen dataset
 if dataset == 'CIFAR10':
