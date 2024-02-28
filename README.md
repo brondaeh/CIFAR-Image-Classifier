@@ -27,7 +27,6 @@ git clone https://github.com/brondaeh/CIFAR-Image-Classifier.git
 pip install -r requirements.txt
 ```
 3. Modify the configuration parameters in config.yaml.
-    - NOTE:
     - Set enable_gpu to True if you have a cuda enabled GPU for training.
     - By default L1 norm pruning is only applicable for VGG16, keep pruning_flag to False for other models.
 4. Start training and testing by running main.py.
@@ -47,12 +46,12 @@ CIFAR-Image-Classifier
 │   └── vgg.py
 ├── Pruner
 │   ├── Pruning_Criterion
-│   |   ├── KMean
-│   |   |   └── KMean_base.py
-│   |   ├── L1norm
-│   |   |   └── L1norm.py
-│   |   ├── Taylor
-│   |   |   └── Taylor.py
+│   │   ├── KMean
+│   │   │   └── KMean_base.py
+│   │   ├── L1norm
+│   │   │   └── L1norm.py
+│   │   ├── Taylor
+│   │   │   └── Taylor.py
 │   ├── pruning_engine_base.py
 │   └── pruning_engine.py
 ├── Pruning_Functions
@@ -65,5 +64,9 @@ CIFAR-Image-Classifier
 ```
 
 ## References
-- [CNN-Pruning-Engine](https://github.com/MIC-Laboratory/CNN-Pruning-Engine)
-- [pytorch-cifar](https://github.com/kuangliu/pytorch-cifar)
+1. [CNN-Pruning-Engine](https://github.com/MIC-Laboratory/CNN-Pruning-Engine)
+2. [pytorch-cifar](https://github.com/kuangliu/pytorch-cifar)
+3. [MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications](https://arxiv.org/abs/1704.04861)
+4. [MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381)
+5. [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385)
+6. [Very Deep Convolutional Networks for Large-Scale Image Recognition](https://arxiv.org/abs/1409.1556)
